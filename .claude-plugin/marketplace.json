@@ -1,0 +1,16 @@
+{
+  "name": "p21",
+  "owner": {
+    "name": "Prometheus21"
+  },
+  "plugins": [
+    {
+      "name": "tijdlog",
+      "source": "./plugins/tijdlog",
+      "description": "Houdt bij hoe lang je met Claude Code werkt en ongeveer aan welk soort taak. Nooit wat je typt."
+    }
+  ],
+  "metadata": {
+    "description": "Interne Claude Code-uitbreidingen van Prometheus21"
+  }
+}

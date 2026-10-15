@@ -1,0 +1,6 @@
+{
+  "name": "tijdlog",
+  "version": "1.0.0",
+  "description": "Houdt bij hoe lang je met Claude Code werkt en ongeveer aan welk soort taak. Nooit wat je typt. Voor het stage-onderzoek van Rinse (okt-nov 2026).",
+  "author": { "name": "Rinse Nieboer, Prometheus21" }
+}
