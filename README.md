@@ -22,7 +22,7 @@ Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
 Typ in Claude Code (terminal of VS Code):
 
 ```
-/plugin marketplace add Prometheus21-NL/p21-tijdlog
+/plugin marketplace add https://github.com/Prometheus21-NL/p21-tijdlog.git
 /plugin install tijdlog@p21
 ```
 
