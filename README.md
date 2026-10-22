@@ -12,10 +12,9 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 | tijdstip (bv. 10:14) | wat je typt |
 | wat er gebeurde: sessie gestart, vraag gesteld, Claude klaar, sessie dicht | wat Claude antwoordt |
 | de naam van de map waarin je werkt | inhoud van bestanden, mails of documenten |
-| een grove soort werk, bv. "Document" of "Bouwen" | |
 
-De soort werk wordt gekozen op basis van een paar trefwoorden. De tekst zelf wordt daarna meteen weggegooid en komt nooit in het bestand.
-Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
+De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
+In het invulscherm kies je zelf per map: Klant, Bedrijf of Project, en voor welke klant of welk project. Het scherm onthoudt dat per map.
 
 ## Installeren (2 minuten)
 
@@ -41,7 +40,7 @@ Sluit Claude Code daarna één keer af en start opnieuw.
 1. Open het invulscherm: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j
 2. Klik bij "Claude-tijdlog" op **Bestand kiezen** en kies het bestand van vandaag uit de map `P21-tijdlog` in je thuismap.
 3. Klik bij "Google Agenda" op **Ophalen**.
-4. Klik op de gestippelde vakken en kies wat je in die tijd deed.
+4. Kies bij elk Claude-blok Klant, Bedrijf of Project en de naam (eenmalig per map). Klik daarna op de gestippelde vakken en vul in voor wie of wat je werkte, eventueel met één zin.
 5. Klik op **Dag opslaan**. Alleen Rinse ziet de opgeslagen dagen; in het verslag komen alleen totalen.
 
 ## Verwijderen

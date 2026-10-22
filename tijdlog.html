@@ -123,7 +123,7 @@ input[type=file]{display:none}
   <header class="kop">
     <div>
       <h1>P21 <span>Tijdlog</span></h1>
-      <p>Vul je werkdag aan: waar was je mee bezig als je niet in een meeting of in Claude zat?</p>
+      <p>Twee dingen: voor wie of wat werkte je, en hoe lang. Vul de gaten in je dag aan.</p>
     </div>
     <div class="dagnav" aria-label="Dag kiezen">
       <button id="vorige" type="button" aria-label="Vorige dag">‹</button>
@@ -136,8 +136,8 @@ input[type=file]{display:none}
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> van hoe laat tot hoe laat je met iets bezig was, en ongeveer wat (bijvoorbeeld "Document", "Klantoverleg", "Mail").</li>
-      <li><b>Niet:</b> wat je typt, wat er in een document of mail staat, of de titel van je afspraken. Agendatitels zie alleen jij op dit scherm; ze worden niet opgeslagen.</li>
+      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte, voor welk soort werk (Klant, Bedrijf of Project) en voor welke klant of welk project. Bij een gat in je dag eventueel één zin die je zelf typt.</li>
+      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt (de tijdlog leest dat nooit), wat er in een document of mail staat, of de titel van je afspraken. Agendatitels zie alleen jij op dit scherm; ze worden niet opgeslagen.</li>
       <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Opslaan klikt, gaat de dag naar Rinse.</li>
       <li>Alleen Rinse ziet de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
       <li>Liever even niet? Typ <span class="mono">/tijdlog:pauze</span> in Claude Code.</li>
@@ -209,9 +209,15 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 const PX = 1.15; // pixels per minuut
-const SOORTEN_REST = ["Mail en berichten","LinkedIn en social","Bellen","Overleg (niet in agenda)","Command Center","Document (buiten Claude)","Bouwen (buiten Claude)","Uitzoeken en leren","Administratie","Pauze","Overig"];
-const SOORTEN_CLAUDE = ["Document","Presentatie","Bouwen","Data en analyse","Mail en berichten","Content en marketing","Overig"];
+const CATS = ["Klant","Bedrijf","Project"]; // Klant = voor een klant, Bedrijf = voor Prometheus21 zelf, Project = eigen project/product
+const CATS_REST = CATS.concat(["Pauze"]);
 const SOORTEN_AGENDA = ["Klantoverleg","Intern overleg","Eigen blok"];
+const catVan = b => b.soort === "Klantoverleg" ? "Klant" : b.soort === "Intern overleg" ? "Bedrijf" : b.soort;
+let onthoud = {}; // map -> {soort,naam}, alleen in deze browser
+let namen = [];
+try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; namen = JSON.parse(localStorage.getItem("p21namen") || "[]") || []; }catch(_){}
+function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); localStorage.setItem("p21namen", JSON.stringify(namen)); }catch(_){} }
+function nieuweNaam(n){ n = (n||"").trim(); if(n && !namen.includes(n)){ namen.push(n); bewaar(); } }
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
@@ -224,15 +230,15 @@ const mode = arr => { const c = {}; let best = "", n = 0; arr.forEach(x => { if(
 
 function voorbeeld(){
   return {
-    claude:[{s:545,e:618,soort:"Document",map:"offertes"},{s:785,e:872,soort:"Bouwen",map:"command-center"},{s:930,e:975,soort:"Presentatie",map:"workshop"}],
-    agenda:[{s:510,e:525,soort:"Intern overleg",titel:"Daily"},{s:660,e:720,soort:"Klantoverleg",titel:"Sprintreview"},{s:600,e:660,soort:"Eigen blok",titel:"Document maken"}],
-    zelf:[{s:618,e:645,soort:"Mail en berichten",notitie:""}]
+    claude:[{s:545,e:618,soort:"Klant",naam:"Klant A",map:"klant-a"},{s:785,e:872,soort:"Bedrijf",naam:"Command Center",map:"command-center"},{s:930,e:975,soort:"Project",naam:"Anti-AI-slop",map:"ai-slop"}],
+    agenda:[{s:510,e:525,soort:"Intern overleg",naam:"",titel:"Daily"},{s:660,e:720,soort:"Klantoverleg",naam:"Klant A",titel:"Sprintreview"},{s:600,e:660,soort:"Eigen blok",naam:"",titel:"Document maken"}],
+    zelf:[{s:618,e:645,soort:"Bedrijf",naam:"Mail",notitie:"mail beantwoord"}]
   };
 }
 
 const S = {
   datum: isoDag(new Date()),
-  werk:{s:510,e:1050}, pauze:{s:720,e:750},
+  werk:{s:510,e:1020}, pauze:{s:720,e:780},
   claude:[], agenda:[], zelf:[],
   voorbeeld:true, sel:null, dirty:false, logRegels:[], agendaGehaald:false
 };
@@ -251,6 +257,21 @@ function gedekt(){
   const m = [];
   c.forEach(x => { if(m.length && x[0] <= m[m.length-1][1]) m[m.length-1][1] = Math.max(m[m.length-1][1], x[1]); else m.push(x.slice()); });
   return m;
+}
+/* elke minuut telt één keer: afspraak gaat voor Claude, Claude voor zelf ingevuld, pauze komt als laatste */
+function perMinuut(){
+  const n = S.werk.e - S.werk.s, r = new Array(n).fill(null);
+  const zet = (b, cat, naam) => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++){ if(!r[m - S.werk.s]) r[m - S.werk.s] = {cat, naam: naam || ""}; } };
+  S.agenda.filter(b => b.soort !== "Eigen blok").forEach(b => zet(b, catVan(b), b.naam));
+  S.claude.forEach(b => zet(b, b.soort || "Niet gekozen", b.naam || b.map));
+  S.zelf.filter(b => b.soort !== "Pauze").forEach(b => zet(b, b.soort, b.naam));
+  zet(S.pauze, "Pauze", ""); S.zelf.filter(b => b.soort === "Pauze").forEach(b => zet(b, "Pauze", ""));
+  return r;
+}
+function totalen(){
+  const cat = {}, naam = {};
+  perMinuut().forEach(x => { if(!x) return; cat[x.cat] = (cat[x.cat]||0) + 1; if(x.naam && x.cat !== "Pauze"){ const k = x.cat + " · " + x.naam; naam[k] = (naam[k]||0) + 1; } });
+  return {cat, naam};
 }
 function gaten(){
   const m = gedekt(), g = []; let t = S.werk.s;
@@ -291,11 +312,11 @@ function renderLijn(){
     const el = blokEl(cls, b, b.titel || b.soort, b.titel ? b.soort + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "agenda" && S.sel.i === i);
     el.onclick = () => kies({t:"agenda",i}); bA.appendChild(el); });
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("claude", b, b.soort, (b.map ? b.map + " · " : "") + fmt(b.s) + "–" + fmt(b.e), S.sel && S.sel.t === "claude" && S.sel.i === i);
+    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + (b.naam || b.map || "Claude"), (b.soort ? "" : "kies klant/bedrijf/project · ") + fmt(b.s) + "–" + fmt(b.e), S.sel && S.sel.t === "claude" && S.sel.i === i);
     el.onclick = () => kies({t:"claude",i}); bC.appendChild(el); });
   if(zichtbaar(S.pauze)){ const p = blokEl("pauze", S.pauze, "Pauze", null, S.sel && S.sel.t === "pauze"); p.onclick = () => kies({t:"pauze"}); bR.appendChild(p); }
   S.zelf.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("zelf", b, b.soort, null, S.sel && S.sel.t === "zelf" && S.sel.i === i);
+    const el = blokEl("zelf", b, b.soort + (b.naam ? " · " + b.naam : ""), b.notitie ? b.notitie + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "zelf" && S.sel.i === i);
     el.onclick = () => kies({t:"zelf",i}); bR.appendChild(el); });
   gaten().forEach(g => {
     const el = blokEl("gat", g, "Wat deed je hier?", fmt(g.s) + "–" + fmt(g.e), S.sel && S.sel.t === "gat" && S.sel.s === g.s);
@@ -328,25 +349,38 @@ function renderPaneel(){
     return;
   }
   const st = document.createElement("div"); st.className = "stack"; P.appendChild(st);
+  const naamVeld = (b, id) => {
+    const v = document.createElement("div"); v.className = "veld";
+    const l = document.createElement("label"); l.className = "label"; l.htmlFor = id; l.textContent = "Welke klant of welk project?";
+    const i = document.createElement("input"); i.id = id; i.maxLength = 40; i.setAttribute("list","namenLijst"); i.placeholder = "bv. RLG of Anti-AI-slop"; i.value = b.naam || "";
+    const dl = document.createElement("datalist"); dl.id = "namenLijst"; namen.forEach(n => { const o = document.createElement("option"); o.value = n; dl.appendChild(o); });
+    i.oninput = () => { b.naam = i.value.trim(); S.dirty = true; };
+    i.onchange = () => { b.naam = i.value.trim(); nieuweNaam(b.naam); if(b.map !== undefined && b.map && b.soort) onthoud[b.map] = {soort:b.soort, naam:b.naam}; bewaar(); pasOnthoudenToe(); alles(); };
+    v.append(l, i, dl); return v;
+  };
+  const catKies = (b, opties) => chipRij(opties, b.soort, o => { b.soort = o; S.dirty = true; if(b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o, naam:b.naam || ""}; bewaar(); pasOnthoudenToe(); } alles(); });
+  const catUitleg = () => tekst("p","Klant = werk voor een klant. Bedrijf = werk voor Prometheus21 zelf. Project = een eigen project of product.","status");
   if(sel.t === "gat"){
     st.appendChild(tekst("p", "Tussen " + fmt(sel.s) + " en " + fmt(sel.e) + " zat je niet in een meeting en niet in Claude. Wat deed je?", ""));
     const rij = document.createElement("div"); rij.className = "rij";
     rij.append(tijdVeld("gatVan","Van",sel.s,sel.s,sel.e), tijdVeld("gatTot","Tot",sel.e,sel.s,sel.e)); st.appendChild(rij);
-    st.appendChild(tekst("span","Waarmee vooral?","label"));
-    let gekozen = null;
-    const chips = chipRij(SOORTEN_REST, null, o => { gekozen = o; chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c.textContent === o))); voeg.disabled = false; });
-    st.appendChild(chips);
+    const nb = {soort:null, naam:""};
+    st.appendChild(tekst("span","Voor wie of wat?","label"));
+    const chips = chipRij(CATS_REST, null, o => { nb.soort = o; chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c.textContent === o))); voeg.disabled = false; });
+    st.appendChild(chips); st.appendChild(catUitleg());
+    st.appendChild(naamVeld(nb, "gatNaam"));
     const nv = document.createElement("div"); nv.className = "veld";
-    const nl = document.createElement("label"); nl.className = "label"; nl.htmlFor = "notitie"; nl.textContent = "Korte toelichting (mag leeg)";
-    const ni = document.createElement("input"); ni.id = "notitie"; ni.maxLength = 60; ni.placeholder = "bv. offerte nagekeken";
+    const nl = document.createElement("label"); nl.className = "label"; nl.htmlFor = "notitie"; nl.textContent = "Wat deed je? Eén zin (mag leeg)";
+    const ni = document.createElement("input"); ni.id = "notitie"; ni.maxLength = 80; ni.placeholder = "bv. offerte nagekeken";
     nv.append(nl, ni); st.appendChild(nv);
-    st.appendChild(tekst("p","Geen klantnamen of inhoud nodig, alleen het soort werk.","status"));
+    st.appendChild(tekst("p","Geen namen van personen of inhoud nodig. Bij Pauze hoef je niets in te vullen.","status"));
     const voeg = document.createElement("button"); voeg.type = "button"; voeg.className = "knop hoofd"; voeg.textContent = "Toevoegen"; voeg.disabled = true;
     voeg.onclick = () => {
       let a = parseT($("gatVan").value), b = parseT($("gatTot").value);
       a = Math.max(sel.s, Math.min(a, sel.e)); b = Math.max(sel.s, Math.min(b, sel.e));
       if(b - a < 5){ $("gatTot").focus(); return; }
-      S.zelf.push({s:a,e:b,soort:gekozen,notitie:ni.value.trim()});
+      nb.naam = ($("gatNaam").value || "").trim(); nieuweNaam(nb.naam);
+      S.zelf.push({s:a,e:b,soort:nb.soort,naam:nb.soort === "Pauze" ? "" : nb.naam,notitie:ni.value.trim()});
       S.zelf.sort((x,y) => x.s - y.s);
       S.dirty = true; S.sel = null; volgendGat(); alles();
     };
@@ -354,18 +388,21 @@ function renderPaneel(){
   } else if(sel.t === "zelf"){
     const b = S.zelf[sel.i];
     st.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + (b.notitie ? " · " + b.notitie : ""), "mono"));
-    st.appendChild(chipRij(SOORTEN_REST, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
+    st.appendChild(catKies(b, CATS_REST));
+    if(b.soort !== "Pauze") st.appendChild(naamVeld(b, "zelfNaam"));
     const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Weghalen";
     del.onclick = () => { S.zelf.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
   } else if(sel.t === "claude"){
     const b = S.claude[sel.i];
-    st.appendChild(tekst("p", "Claude, " + fmt(b.s) + "–" + fmt(b.e) + (b.map ? ", map " + b.map : "") + ". De soort is een gok op basis van trefwoorden. Klopt hij niet? Kies de goede.", ""));
-    st.appendChild(chipRij(SOORTEN_CLAUDE, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
+    st.appendChild(tekst("p", "Claude, " + fmt(b.s) + "–" + fmt(b.e) + (b.map ? ", map " + b.map : "") + ". Voor wie of wat werkte je? Dit onthoudt het scherm per map, dus je kiest het maar één keer.", ""));
+    st.appendChild(catKies(b, CATS)); st.appendChild(catUitleg());
+    st.appendChild(naamVeld(b, "claudeNaam"));
   } else if(sel.t === "agenda"){
     const b = S.agenda[sel.i];
     st.appendChild(tekst("p", (b.titel ? b.titel + ", " : "") + fmt(b.s) + "–" + fmt(b.e) + ". Wat voor afspraak was dit?", ""));
     st.appendChild(chipRij(SOORTEN_AGENDA, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
-    st.appendChild(tekst("p","\"Eigen blok\" is een blok dat je voor jezelf had gepland, zoals \"document maken\". Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
+    st.appendChild(tekst("p","Klantoverleg telt als Klant, Intern overleg als Bedrijf. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
+    if(b.soort !== "Eigen blok") st.appendChild(naamVeld(b, "agendaNaam"));
     const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Ging niet door, weghalen";
     del.onclick = () => { S.agenda.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
   } else if(sel.t === "pauze"){
@@ -377,18 +414,18 @@ function renderPaneel(){
     st.appendChild(ok);
   }
 }
-function volgendGat(){ const g = gaten(); if(g.length) S.sel = {t:"gat",s:g[0].s,e:g[0].e}; }
+function volgendGat(){
+  const i = S.claude.findIndex(b => !b.soort);
+  if(i >= 0){ S.sel = {t:"claude",i}; return; }
+  const g = gaten(); if(g.length) S.sel = {t:"gat",s:g[0].s,e:g[0].e};
+}
 function kies(sel){ S.sel = sel; renderLijn(); renderPaneel(); }
 
 /* ---------- samenvatting ---------- */
 function renderSom(){
   const W = $("som"); W.innerHTML = "";
   const totaal = S.werk.e - S.werk.s;
-  const klip = b => Math.max(0, Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s));
-  const som = arr => arr.reduce((t,b) => t + klip(b), 0);
-  const klant = som(S.agenda.filter(b => b.soort === "Klantoverleg"));
-  const intern = som(S.agenda.filter(b => b.soort === "Intern overleg"));
-  const cl = som(S.claude), zelf = som(S.zelf.filter(b => b.soort !== "Pauze")), pauze = klip(S.pauze) + som(S.zelf.filter(b => b.soort === "Pauze"));
+  const T = totalen();
   const open = gaten().reduce((t,g) => t + (g.e - g.s), 0);
   const verklaard = Math.max(0, totaal - open);
   const pct = totaal ? Math.round(verklaard / totaal * 100) : 0;
@@ -397,14 +434,21 @@ function renderSom(){
   W.appendChild(kop);
   const balk = document.createElement("div"); balk.className = "balk"; balk.setAttribute("role","img");
   balk.setAttribute("aria-label", pct + " procent verklaard");
-  [[klant,"var(--accent)"],[intern,"var(--accent-soft)"],[cl,"var(--claude)"],[zelf,"var(--zelf)"],[pauze,"var(--pauze)"]].forEach(([m,c]) => {
-    const s = document.createElement("span"); s.style.width = (totaal ? Math.min(100, m/totaal*100) : 0) + "%"; s.style.background = c; balk.appendChild(s); });
+  [["Klant","var(--accent)"],["Bedrijf","var(--claude)"],["Project","var(--zelf)"],["Niet gekozen","var(--accent-soft)"],["Pauze","var(--pauze)"]].forEach(([k,c]) => {
+    const s = document.createElement("span"); s.style.width = (totaal ? Math.min(100, (T.cat[k]||0)/totaal*100) : 0) + "%"; s.style.background = c; balk.appendChild(s); });
   W.appendChild(balk);
   const t = document.createElement("div"); t.className = "tot";
-  [["Klantoverleg",klant],["Intern overleg",intern],["Claude",cl],["Zelf ingevuld",zelf],["Pauze",pauze],["Nog open",open]].forEach(([n,m]) => {
+  [["Klant",T.cat["Klant"]||0],["Bedrijf",T.cat["Bedrijf"]||0],["Project",T.cat["Project"]||0],["Claude-tijd zonder keuze",T.cat["Niet gekozen"]||0],["Pauze",T.cat["Pauze"]||0],["Nog open",open]].forEach(([n,m]) => {
     t.append(tekst("span", n), tekst("span", uurMin(m), "mono")); });
   W.appendChild(t);
-  W.appendChild(tekst("p","Meetings en Claude kunnen elkaar overlappen. Het percentage telt elke minuut maar één keer.","status"));
+  const namenLijst = Object.entries(T.naam).sort((a,b) => b[1]-a[1]);
+  if(namenLijst.length){
+    W.appendChild(tekst("span","Per klant of project","label"));
+    const t2 = document.createElement("div"); t2.className = "tot";
+    namenLijst.forEach(([n,m]) => t2.append(tekst("span", n), tekst("span", uurMin(m), "mono")));
+    W.appendChild(t2);
+  }
+  W.appendChild(tekst("p","Meetings en Claude kunnen elkaar overlappen. Elke minuut telt maar één keer.","status"));
 }
 
 function alles(){ renderLijn(); renderPaneel(); renderSom(); renderStatus(); }
@@ -413,19 +457,38 @@ function alles(){ renderLijn(); renderPaneel(); renderSom(); renderStatus(); }
 function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
 function leesLog(txt){
   const out = [];
-  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,map:o.map||"",soort:o.soort||""}); }catch(_){} });
+  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,map:o.map||""}); }catch(_){} });
   return out;
 }
+const minDag = x => x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
+/* een vraag loopt tot de eerstvolgende "klaar"; stukken met dezelfde map die minder dan 15 min uit elkaar liggen horen bij elkaar */
 function blokkenVoor(dag){
   const ev = S.logRegels.filter(x => isoDag(x.d) === dag).sort((a,b) => a.d - b.d);
-  const groep = []; let cur = null;
-  ev.forEach(x => { const m = x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
-    if(cur && m - cur.last <= 15){ cur.last = m; cur.items.push(x); } else { cur = {start:m,last:m,items:[x]}; groep.push(cur); } });
-  return groep.map((g,i) => {
-    const volgende = groep[i+1] ? groep[i+1].start : Infinity;
-    const e = Math.min(g.last + 5, volgende);
-    return {s:Math.floor(g.start), e:Math.max(Math.ceil(e), Math.floor(g.start)+5), soort: mode(g.items.filter(x => x.e === "vraag").map(x => x.soort)) || "Overig", map: mode(g.items.map(x => x.map))};
+  const iv = [];
+  ev.forEach((x,i) => {
+    if(x.e !== "vraag") return;
+    const m = minDag(x); let eind = m + 5;
+    for(let j = i+1; j < ev.length; j++){
+      const mj = minDag(ev[j]);
+      if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
+      if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, mj); break; }
+    }
+    iv.push({s:m, e:eind, map:x.map});
   });
+  const blokken = [];
+  iv.forEach(x => {
+    const laatste = blokken.length ? blokken[blokken.length-1] : null;
+    if(laatste && laatste.map === x.map && x.s - laatste.e <= 15){ laatste.e = Math.max(laatste.e, x.e); }
+    else blokken.push({s:x.s, e:x.e, map:x.map});
+  });
+  blokken.sort((a,b) => a.s - b.s);
+  blokken.forEach((b,i) => { const v = blokken[i+1]; if(v && b.e > v.s) b.e = Math.max(v.s, b.s + 5); });
+  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:"", naam:"", map:b.map}));
+  pasOnthoudenToe(res);
+  return res;
+}
+function pasOnthoudenToe(lijst){
+  (lijst || S.claude).forEach(b => { const o = b.map && onthoud[b.map]; if(o){ if(!b.soort) b.soort = o.soort; if(!b.naam) b.naam = o.naam; } });
 }
 async function bestanden(files){
   let n = 0;
@@ -463,7 +526,7 @@ async function haalAgenda(){
       if(isoDag(a) !== S.datum) return;
       const anderen = (e.attendees||[]).filter(x => !x.self && !x.resource);
       const soort = !anderen.length ? "Eigen blok" : anderen.some(x => !/@prometheus21\.nl$/i.test(x.email||"")) ? "Klantoverleg" : "Intern overleg";
-      lijst.push({s:a.getHours()*60+a.getMinutes(), e:b.getHours()*60+b.getMinutes() || 1440, soort, titel:e.summary||""});
+      lijst.push({s:a.getHours()*60+a.getMinutes(), e:b.getHours()*60+b.getMinutes() || 1440, soort, naam:"", titel:e.summary||""});
     });
     wegVoorbeeld();
     S.agenda = lijst; S.agendaGehaald = true; S.dirty = true;
@@ -500,13 +563,13 @@ async function opslaan(){
   if(!db || !uid || S.voorbeeld) return;
   const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
   const blokken = [];
-  S.agenda.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"agenda",soort:b.soort}));
-  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort,map:b.map||""}));
-  S.zelf.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort,notitie:b.notitie||""}));
+  S.agenda.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"agenda",soort:b.soort,naam:b.naam||""}));
+  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort,naam:b.naam||"",map:b.map||""}));
+  S.zelf.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort,naam:b.naam||"",notitie:b.notitie||""}));
   const open = gaten().reduce((t,g) => t + (g.e - g.s), 0);
   try{
     await db.doc("dagen/" + uid).set({laatst:S.datum});
-    await db.doc("dagen/" + uid + "/d/" + S.datum).set({datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, pauze:{van:fmt(S.pauze.s),tot:fmt(S.pauze.e)}, blokken, open_minuten:open, opgeslagen:new Date().toISOString()});
+    await db.doc("dagen/" + uid + "/d/" + S.datum).set({datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, pauze:{van:fmt(S.pauze.s),tot:fmt(S.pauze.e)}, blokken, totalen:totalen(), open_minuten:open, opgeslagen:new Date().toISOString()});
     S.dirty = false;
     $("opslaanStatus").textContent = "Opgeslagen om " + new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   }catch(err){
@@ -524,9 +587,9 @@ async function laadOpgeslagen(){
     S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
     if(d.pauze) S.pauze = {s:parseT(d.pauze.van), e:parseT(d.pauze.tot)};
     const bl = Array.isArray(d.blokken) ? d.blokken : [];
-    S.agenda = bl.filter(b => b.bron === "agenda").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,titel:""}));
-    S.claude = bl.filter(b => b.bron === "claude").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,map:b.map||""}));
-    S.zelf = bl.filter(b => b.bron === "zelf").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,notitie:b.notitie||""}));
+    S.agenda = bl.filter(b => b.bron === "agenda").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",titel:""}));
+    S.claude = bl.filter(b => b.bron === "claude").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",map:b.map||""}));
+    S.zelf = bl.filter(b => b.bron === "zelf").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",notitie:b.notitie||""}));
     S.dirty = false; S.sel = null;
     $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
     $("opslaanStatus").textContent = "Deze dag is al opgeslagen. Wijzigingen? Klik opnieuw op Dag opslaan.";
@@ -546,31 +609,36 @@ async function laadTeam(){
   const T = $("team"); T.innerHTML = ""; T.appendChild(tekst("p","Bezig met laden…","status"));
   try{
     const mensen = await db.collection("dagen").get();
-    const rijen = [];
+    const rijen = [], perNaam = {};
     for(const p of mensen.docs){
       const dagen = await db.collection("dagen/" + p.id + "/d").get();
-      const r = {id:p.id, dagen:0, klant:0, intern:0, claude:0, zelf:0, open:0};
+      const r = {id:p.id, dagen:0, Klant:0, Bedrijf:0, Project:0, open:0};
       dagen.docs.forEach(d => { const x = d.data(); r.dagen++; r.open += x.open_minuten || 0;
-        (x.blokken||[]).forEach(b => { const m = parseT(b.tot) - parseT(b.van); if(m <= 0) return;
-          if(b.bron === "agenda" && b.soort === "Klantoverleg") r.klant += m;
-          else if(b.bron === "agenda" && b.soort === "Intern overleg") r.intern += m;
-          else if(b.bron === "claude") r.claude += m;
-          else if(b.bron === "zelf" && b.soort !== "Pauze") r.zelf += m; }); });
+        const t = x.totalen || {cat:{},naam:{}};
+        ["Klant","Bedrijf","Project"].forEach(k => r[k] += (t.cat && t.cat[k]) || 0);
+        Object.entries(t.naam||{}).forEach(([k,m]) => { perNaam[k] = (perNaam[k]||0) + m; }); });
       rijen.push(r);
     }
     T.innerHTML = "";
     if(!rijen.length){ T.appendChild(tekst("p","Nog niemand heeft een dag opgeslagen.","leeg")); return; }
     const namen = user ? await user.profiles(rijen.map(r => r.id)) : {};
     const tb = document.createElement("table");
-    const kop = document.createElement("tr"); ["Persoon","Dagen","Klant","Intern","Claude","Zelf","Open"].forEach(h => kop.appendChild(tekst("th",h)));
+    const kop = document.createElement("tr"); ["Persoon","Dagen","Klant","Bedrijf","Project","Open"].forEach(h => kop.appendChild(tekst("th",h)));
     const th = document.createElement("thead"); th.appendChild(kop); tb.appendChild(th);
     const body = document.createElement("tbody");
     rijen.forEach(r => { const tr = document.createElement("tr");
       tr.appendChild(tekst("td", (namen[r.id] && namen[r.id].name) || "Teamlid"));
       tr.appendChild(tekst("td", String(r.dagen), "mono"));
-      [r.klant,r.intern,r.claude,r.zelf,r.open].forEach(m => tr.appendChild(tekst("td", uurMin(m), "mono")));
+      [r.Klant,r.Bedrijf,r.Project,r.open].forEach(m => tr.appendChild(tekst("td", uurMin(m), "mono")));
       body.appendChild(tr); });
     tb.appendChild(body); T.appendChild(tb);
+    const lijst = Object.entries(perNaam).sort((a,b) => b[1]-a[1]);
+    if(lijst.length){
+      T.appendChild(tekst("h3","Per klant of project, hele team","label")).style.marginTop = "14px";
+      const t2 = document.createElement("div"); t2.className = "tot";
+      lijst.forEach(([n,m]) => t2.append(tekst("span", n), tekst("span", uurMin(m), "mono")));
+      T.appendChild(t2);
+    }
   }catch(_){ T.innerHTML = ""; T.appendChild(tekst("p","Laden lukte niet. Probeer het opnieuw.","leeg")); }
 }
 
