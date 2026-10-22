@@ -28,7 +28,7 @@ Start Claude Code daarna opnieuw (VS Code: Claude-paneel sluiten en openen).
 
 ## Aan het eind van de dag (2 minuten)
 
-Typ in Claude Code: `/tijdlog:dag`. Beantwoord de lijst met vragen en mail het blok dat je terugkrijgt naar Rinse.
+Om 16:45 krijg je een melding op je scherm en Claude herinnert je er in je volgende gesprek aan (één keer per dag, en alleen als je de dag nog niet hebt afgesloten). Typ in Claude Code: `/tijdlog:dag`. Beantwoord de lijst met vragen en mail het blok dat je terugkrijgt naar Rinse.
 
 ## Handige opdrachten
 
