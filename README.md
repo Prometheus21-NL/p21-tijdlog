@@ -16,32 +16,28 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
 In het invulscherm kies je zelf per map: Klant, Bedrijf of Project, en voor welke klant of welk project. Het scherm onthoudt dat per map.
 
-## Installeren (2 minuten)
+## Installeren (1 regel)
 
-Typ in Claude Code (terminal of VS Code):
+Plak in de terminal:
 
 ```
-/plugin marketplace add https://github.com/Prometheus21-NL/p21-tijdlog.git
-/plugin install tijdlog@p21
+claude plugin marketplace add https://github.com/Prometheus21-NL/p21-tijdlog.git && claude plugin install tijdlog@p21
 ```
 
-Sluit Claude Code daarna één keer af en start opnieuw.
+Start Claude Code daarna opnieuw (VS Code: Claude-paneel sluiten en openen).
+
+## Aan het eind van de dag (2 minuten)
+
+Typ in Claude Code: `/tijdlog:dag`. Beantwoord de lijst met vragen en mail het blok dat je terugkrijgt naar Rinse.
 
 ## Handige opdrachten
 
 | Opdracht | Wat het doet |
 |---|---|
+| `/tijdlog:dag` | sluit je dag af en maakt de samenvatting voor Rinse |
 | `/tijdlog:vandaag` | laat zien wat er vandaag genoteerd is |
 | `/tijdlog:pauze` | even niets bijhouden |
 | `/tijdlog:hervat` | weer bijhouden |
-
-## Aan het eind van de dag (2 minuten)
-
-1. Open het invulscherm: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j
-2. Klik bij "Claude-tijdlog" op **Bestand kiezen** en kies het bestand van vandaag uit de map `P21-tijdlog` in je thuismap.
-3. Klik bij "Google Agenda" op **Ophalen**.
-4. Kies bij elk Claude-blok Klant, Bedrijf of Project en de naam (eenmalig per map). Klik daarna op de gestippelde vakken en vul in voor wie of wat je werkte, eventueel met één zin.
-5. Klik op **Dag opslaan**. Alleen Rinse ziet de opgeslagen dagen; in het verslag komen alleen totalen.
 
 ## Verwijderen
 
