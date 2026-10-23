@@ -136,7 +136,7 @@ input[type=file]{display:none}
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte, voor welk soort werk (Klant, Bedrijf of Project) en voor welke klant of welk project. Bij een gat in je dag eventueel één zin die je zelf typt.</li>
+      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte, voor welk soort werk (Klantwerk, Intern werk of Acquisitie). Namen van klanten of projecten worden niet gevraagd. Bij een gat in je dag eventueel één zin die je zelf typt.</li>
       <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt (de tijdlog leest dat nooit), wat er in een document of mail staat, of de titel van je afspraken. Agendatitels zie alleen jij op dit scherm; ze worden niet opgeslagen.</li>
       <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Opslaan klikt, gaat de dag naar Rinse.</li>
       <li>Alleen Rinse ziet de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
@@ -209,10 +209,10 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 const PX = 1.15; // pixels per minuut
-const CATS = ["Klant","Bedrijf","Project"]; // Klant = voor een klant, Bedrijf = voor Prometheus21 zelf, Project = eigen project/product
+const CATS = ["Klantwerk","Intern werk","Acquisitie"]; // Klantwerk = voor een klant, Intern werk = voor Prometheus21 zelf, Acquisitie = nieuwe klanten werven
 const CATS_REST = CATS.concat(["Pauze"]);
 const SOORTEN_AGENDA = ["Klantoverleg","Intern overleg","Eigen blok"];
-const catVan = b => b.soort === "Klantoverleg" ? "Klant" : b.soort === "Intern overleg" ? "Bedrijf" : b.soort;
+const catVan = b => b.soort === "Klantoverleg" ? "Klantwerk" : b.soort === "Intern overleg" ? "Intern werk" : b.soort;
 let onthoud = {}; // map -> {soort,naam}, alleen in deze browser
 let namen = [];
 try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; namen = JSON.parse(localStorage.getItem("p21namen") || "[]") || []; }catch(_){}
@@ -230,9 +230,9 @@ const mode = arr => { const c = {}; let best = "", n = 0; arr.forEach(x => { if(
 
 function voorbeeld(){
   return {
-    claude:[{s:545,e:618,soort:"Klant",naam:"Klant A",map:"klant-a"},{s:785,e:872,soort:"Bedrijf",naam:"Command Center",map:"command-center"},{s:930,e:975,soort:"Project",naam:"Anti-AI-slop",map:"ai-slop"}],
-    agenda:[{s:510,e:525,soort:"Intern overleg",naam:"",titel:"Daily"},{s:660,e:720,soort:"Klantoverleg",naam:"Klant A",titel:"Sprintreview"},{s:600,e:660,soort:"Eigen blok",naam:"",titel:"Document maken"}],
-    zelf:[{s:618,e:645,soort:"Bedrijf",naam:"Mail",notitie:"mail beantwoord"}]
+    claude:[{s:545,e:618,soort:"Klantwerk",naam:"",map:"map-a"},{s:785,e:872,soort:"Intern werk",naam:"",map:"map-b"},{s:930,e:975,soort:"Acquisitie",naam:"",map:"map-c"}],
+    agenda:[{s:510,e:525,soort:"Intern overleg",naam:"",titel:"Daily"},{s:660,e:720,soort:"Klantoverleg",naam:"",titel:"Sprintreview"},{s:600,e:660,soort:"Eigen blok",naam:"",titel:"Document maken"}],
+    zelf:[{s:618,e:645,soort:"Intern werk",naam:"",notitie:"mail beantwoord"}]
   };
 }
 
@@ -263,7 +263,7 @@ function perMinuut(){
   const n = S.werk.e - S.werk.s, r = new Array(n).fill(null);
   const zet = (b, cat, naam) => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++){ if(!r[m - S.werk.s]) r[m - S.werk.s] = {cat, naam: naam || ""}; } };
   S.agenda.filter(b => b.soort !== "Eigen blok").forEach(b => zet(b, catVan(b), b.naam));
-  S.claude.forEach(b => zet(b, b.soort || "Niet gekozen", b.naam || b.map));
+  S.claude.forEach(b => zet(b, b.soort || "Niet gekozen", ""));
   S.zelf.filter(b => b.soort !== "Pauze").forEach(b => zet(b, b.soort, b.naam));
   zet(S.pauze, "Pauze", ""); S.zelf.filter(b => b.soort === "Pauze").forEach(b => zet(b, "Pauze", ""));
   return r;
@@ -312,7 +312,7 @@ function renderLijn(){
     const el = blokEl(cls, b, b.titel || b.soort, b.titel ? b.soort + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "agenda" && S.sel.i === i);
     el.onclick = () => kies({t:"agenda",i}); bA.appendChild(el); });
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + (b.naam || b.map || "Claude"), (b.soort ? "" : "kies klant/bedrijf/project · ") + fmt(b.s) + "–" + fmt(b.e), S.sel && S.sel.t === "claude" && S.sel.i === i);
+    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + (b.naam || b.map || "Claude"), (b.soort ? "" : "kies soort werk · ") + fmt(b.s) + "–" + fmt(b.e), S.sel && S.sel.t === "claude" && S.sel.i === i);
     el.onclick = () => kies({t:"claude",i}); bC.appendChild(el); });
   if(zichtbaar(S.pauze)){ const p = blokEl("pauze", S.pauze, "Pauze", null, S.sel && S.sel.t === "pauze"); p.onclick = () => kies({t:"pauze"}); bR.appendChild(p); }
   S.zelf.forEach((b,i) => { if(!zichtbaar(b)) return;
@@ -349,17 +349,9 @@ function renderPaneel(){
     return;
   }
   const st = document.createElement("div"); st.className = "stack"; P.appendChild(st);
-  const naamVeld = (b, id) => {
-    const v = document.createElement("div"); v.className = "veld";
-    const l = document.createElement("label"); l.className = "label"; l.htmlFor = id; l.textContent = "Welke klant of welk project?";
-    const i = document.createElement("input"); i.id = id; i.maxLength = 40; i.setAttribute("list","namenLijst"); i.placeholder = "bv. RLG of Anti-AI-slop"; i.value = b.naam || "";
-    const dl = document.createElement("datalist"); dl.id = "namenLijst"; namen.forEach(n => { const o = document.createElement("option"); o.value = n; dl.appendChild(o); });
-    i.oninput = () => { b.naam = i.value.trim(); S.dirty = true; };
-    i.onchange = () => { b.naam = i.value.trim(); nieuweNaam(b.naam); if(b.map !== undefined && b.map && b.soort) onthoud[b.map] = {soort:b.soort, naam:b.naam}; bewaar(); pasOnthoudenToe(); alles(); };
-    v.append(l, i, dl); return v;
-  };
+  const naamVeld = () => document.createDocumentFragment(); // namen van klanten of projecten worden niet gevraagd
   const catKies = (b, opties) => chipRij(opties, b.soort, o => { b.soort = o; S.dirty = true; if(b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o, naam:b.naam || ""}; bewaar(); pasOnthoudenToe(); } alles(); });
-  const catUitleg = () => tekst("p","Klant = werk voor een klant. Bedrijf = werk voor Prometheus21 zelf. Project = een eigen project of product.","status");
+  const catUitleg = () => tekst("p","Klantwerk = werk voor een klant. Intern werk = werk voor Prometheus21 zelf. Acquisitie = nieuwe klanten werven.","status");
   if(sel.t === "gat"){
     st.appendChild(tekst("p", "Tussen " + fmt(sel.s) + " en " + fmt(sel.e) + " zat je niet in een meeting en niet in Claude. Wat deed je?", ""));
     const rij = document.createElement("div"); rij.className = "rij";
@@ -379,8 +371,7 @@ function renderPaneel(){
       let a = parseT($("gatVan").value), b = parseT($("gatTot").value);
       a = Math.max(sel.s, Math.min(a, sel.e)); b = Math.max(sel.s, Math.min(b, sel.e));
       if(b - a < 5){ $("gatTot").focus(); return; }
-      nb.naam = ($("gatNaam").value || "").trim(); nieuweNaam(nb.naam);
-      S.zelf.push({s:a,e:b,soort:nb.soort,naam:nb.soort === "Pauze" ? "" : nb.naam,notitie:ni.value.trim()});
+            S.zelf.push({s:a,e:b,soort:nb.soort,naam:"",notitie:ni.value.trim()});
       S.zelf.sort((x,y) => x.s - y.s);
       S.dirty = true; S.sel = null; volgendGat(); alles();
     };
@@ -401,7 +392,7 @@ function renderPaneel(){
     const b = S.agenda[sel.i];
     st.appendChild(tekst("p", (b.titel ? b.titel + ", " : "") + fmt(b.s) + "–" + fmt(b.e) + ". Wat voor afspraak was dit?", ""));
     st.appendChild(chipRij(SOORTEN_AGENDA, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
-    st.appendChild(tekst("p","Klantoverleg telt als Klant, Intern overleg als Bedrijf. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
+    st.appendChild(tekst("p","Klantoverleg telt als Klantwerk, Intern overleg als Intern werk. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
     if(b.soort !== "Eigen blok") st.appendChild(naamVeld(b, "agendaNaam"));
     const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Ging niet door, weghalen";
     del.onclick = () => { S.agenda.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
@@ -434,20 +425,13 @@ function renderSom(){
   W.appendChild(kop);
   const balk = document.createElement("div"); balk.className = "balk"; balk.setAttribute("role","img");
   balk.setAttribute("aria-label", pct + " procent verklaard");
-  [["Klant","var(--accent)"],["Bedrijf","var(--claude)"],["Project","var(--zelf)"],["Niet gekozen","var(--accent-soft)"],["Pauze","var(--pauze)"]].forEach(([k,c]) => {
+  [["Klantwerk","var(--accent)"],["Intern werk","var(--claude)"],["Acquisitie","var(--zelf)"],["Niet gekozen","var(--accent-soft)"],["Pauze","var(--pauze)"]].forEach(([k,c]) => {
     const s = document.createElement("span"); s.style.width = (totaal ? Math.min(100, (T.cat[k]||0)/totaal*100) : 0) + "%"; s.style.background = c; balk.appendChild(s); });
   W.appendChild(balk);
   const t = document.createElement("div"); t.className = "tot";
-  [["Klant",T.cat["Klant"]||0],["Bedrijf",T.cat["Bedrijf"]||0],["Project",T.cat["Project"]||0],["Claude-tijd zonder keuze",T.cat["Niet gekozen"]||0],["Pauze",T.cat["Pauze"]||0],["Nog open",open]].forEach(([n,m]) => {
+  [["Klantwerk",T.cat["Klantwerk"]||0],["Intern werk",T.cat["Intern werk"]||0],["Acquisitie",T.cat["Acquisitie"]||0],["Claude-tijd zonder keuze",T.cat["Niet gekozen"]||0],["Pauze",T.cat["Pauze"]||0],["Nog open",open]].forEach(([n,m]) => {
     t.append(tekst("span", n), tekst("span", uurMin(m), "mono")); });
   W.appendChild(t);
-  const namenLijst = Object.entries(T.naam).sort((a,b) => b[1]-a[1]);
-  if(namenLijst.length){
-    W.appendChild(tekst("span","Per klant of project","label"));
-    const t2 = document.createElement("div"); t2.className = "tot";
-    namenLijst.forEach(([n,m]) => t2.append(tekst("span", n), tekst("span", uurMin(m), "mono")));
-    W.appendChild(t2);
-  }
   W.appendChild(tekst("p","Meetings en Claude kunnen elkaar overlappen. Elke minuut telt maar één keer.","status"));
 }
 
@@ -488,7 +472,7 @@ function blokkenVoor(dag){
   return res;
 }
 function pasOnthoudenToe(lijst){
-  (lijst || S.claude).forEach(b => { const o = b.map && onthoud[b.map]; if(o){ if(!b.soort) b.soort = o.soort; if(!b.naam) b.naam = o.naam; } });
+  (lijst || S.claude).forEach(b => { const o = b.map && onthoud[b.map]; if(o && CATS.includes(o.soort)){ if(!b.soort) b.soort = o.soort; } });
 }
 async function bestanden(files){
   let n = 0;
@@ -564,7 +548,7 @@ async function opslaan(){
   const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
   const blokken = [];
   S.agenda.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"agenda",soort:b.soort,naam:b.naam||""}));
-  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort,naam:b.naam||"",map:b.map||""}));
+  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort,naam:"",map:""}));
   S.zelf.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort,naam:b.naam||"",notitie:b.notitie||""}));
   const open = gaten().reduce((t,g) => t + (g.e - g.s), 0);
   try{
@@ -609,36 +593,29 @@ async function laadTeam(){
   const T = $("team"); T.innerHTML = ""; T.appendChild(tekst("p","Bezig met laden…","status"));
   try{
     const mensen = await db.collection("dagen").get();
-    const rijen = [], perNaam = {};
+    const rijen = [];
     for(const p of mensen.docs){
       const dagen = await db.collection("dagen/" + p.id + "/d").get();
-      const r = {id:p.id, dagen:0, Klant:0, Bedrijf:0, Project:0, open:0};
+      const r = {id:p.id, dagen:0, Klantwerk:0, "Intern werk":0, Acquisitie:0, open:0};
       dagen.docs.forEach(d => { const x = d.data(); r.dagen++; r.open += x.open_minuten || 0;
         const t = x.totalen || {cat:{},naam:{}};
-        ["Klant","Bedrijf","Project"].forEach(k => r[k] += (t.cat && t.cat[k]) || 0);
-        Object.entries(t.naam||{}).forEach(([k,m]) => { perNaam[k] = (perNaam[k]||0) + m; }); });
+        ["Klantwerk","Intern werk","Acquisitie"].forEach(k => r[k] += (t.cat && t.cat[k]) || 0);
+      });
       rijen.push(r);
     }
     T.innerHTML = "";
     if(!rijen.length){ T.appendChild(tekst("p","Nog niemand heeft een dag opgeslagen.","leeg")); return; }
     const namen = user ? await user.profiles(rijen.map(r => r.id)) : {};
     const tb = document.createElement("table");
-    const kop = document.createElement("tr"); ["Persoon","Dagen","Klant","Bedrijf","Project","Open"].forEach(h => kop.appendChild(tekst("th",h)));
+    const kop = document.createElement("tr"); ["Persoon","Dagen","Klantwerk","Intern werk","Acquisitie","Open"].forEach(h => kop.appendChild(tekst("th",h)));
     const th = document.createElement("thead"); th.appendChild(kop); tb.appendChild(th);
     const body = document.createElement("tbody");
     rijen.forEach(r => { const tr = document.createElement("tr");
       tr.appendChild(tekst("td", (namen[r.id] && namen[r.id].name) || "Teamlid"));
       tr.appendChild(tekst("td", String(r.dagen), "mono"));
-      [r.Klant,r.Bedrijf,r.Project,r.open].forEach(m => tr.appendChild(tekst("td", uurMin(m), "mono")));
+      [r.Klantwerk,r["Intern werk"],r.Acquisitie,r.open].forEach(m => tr.appendChild(tekst("td", uurMin(m), "mono")));
       body.appendChild(tr); });
     tb.appendChild(body); T.appendChild(tb);
-    const lijst = Object.entries(perNaam).sort((a,b) => b[1]-a[1]);
-    if(lijst.length){
-      T.appendChild(tekst("h3","Per klant of project, hele team","label")).style.marginTop = "14px";
-      const t2 = document.createElement("div"); t2.className = "tot";
-      lijst.forEach(([n,m]) => t2.append(tekst("span", n), tekst("span", uurMin(m), "mono")));
-      T.appendChild(t2);
-    }
   }catch(_){ T.innerHTML = ""; T.appendChild(tekst("p","Laden lukte niet. Probeer het opnieuw.","leeg")); }
 }
 
