@@ -120,20 +120,44 @@ input[type=file]{display:none}
 </style>
 
 <style>
-.wrap{max-width:640px}
-.lijn{display:block;grid-template-columns:none}
+:root{--acq:#E6E6E2;--acq-ink:#3A3D45;--acq-line:#CFCFC9;--on-klant:#FFFFFF}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}}
+:root[data-theme="dark"]{--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}
+.wrap{max-width:820px}
+.kop-rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kop-rechts input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:150px}
+.lijnwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}
+.lijn{display:block;grid-template-columns:none;position:relative}
 .baan{position:absolute;left:56px;right:0;top:0;bottom:0;border-left:1px solid var(--line)}
 .uur{left:0;width:46px;right:auto;text-align:right}
+.zij{position:relative}
+.paneel{position:absolute;left:0;right:0;top:0;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.paneel h3{font-size:16px;font-weight:700;margin:0 0 2px}
+.paneel .tijd{margin:0 0 12px;color:var(--muted);font-size:13px}
+.paneel .keuzes{display:flex;flex-direction:column;gap:6px}
+.paneel .acties{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.paneel .hulp{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.keuze{display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 12px;font-weight:500}
+.keuze:hover{border-color:var(--ink)}
+.keuze[aria-pressed="true"]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.sw{width:16px;height:16px;border-radius:5px;flex:none;border:1px solid transparent}
+.sw.klant{background:var(--accent)}.sw.intern{background:var(--claude)}.sw.acq{background:var(--acq);border-color:var(--acq-line)}
+.sw.pauze{background:repeating-linear-gradient(135deg,transparent 0 3px,var(--pauze) 3px 5px);border-color:var(--pauze)}
 .split{position:absolute;left:0;right:0;height:22px;transform:translateY(-11px);cursor:ns-resize;touch-action:none;z-index:3;display:flex;align-items:center;justify-content:center}
 .split::before{content:"";position:absolute;left:0;right:0;top:10px;border-top:3px solid var(--ink);border-radius:2px}
 .split span{position:relative;background:var(--ink);color:var(--surface);border-radius:999px;padding:1px 9px;font-size:11.5px}
 .split:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.paneel{position:sticky;bottom:12px;z-index:5;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
-.paneel .pk{margin:0 0 10px;font-weight:600}
-.paneel .acties{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.blok.c-klant{background:var(--accent);color:var(--on-klant);border-color:var(--accent)}
+.blok.c-intern{background:var(--claude);color:var(--claude-ink);border-color:var(--claude)}
+.blok.c-acq{background:var(--acq);color:var(--acq-ink);border-color:var(--acq-line)}
+.blok.leeg{background:transparent;color:var(--claude);border:1.5px dashed var(--claude)}
+.blok{transition:background-color .15s,color .15s}
 .opslaanrij{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.chip{padding:8px 14px;font-size:14px}
-.blok.zelf{background:var(--zelf);color:#fff;border-color:var(--zelf)}
+@media (max-width:640px){
+  .lijnwrap{grid-template-columns:minmax(0,1fr)}
+  .zij{position:static}
+  .paneel{position:fixed;left:12px;right:12px;bottom:12px;top:auto!important;z-index:20}
+}
 </style>
 <div class="wrap">
   <header class="kop">
@@ -141,18 +165,24 @@ input[type=file]{display:none}
       <h1>P21 <span>Tijdlog</span></h1>
       <p>Kies bij elk stuk van je dag wat voor werk het was.</p>
     </div>
-    <div class="dagnav" aria-label="Dag kiezen">
-      <button id="vorige" type="button" aria-label="Vorige dag">‹</button>
-      <input id="datum" type="date" aria-label="Datum">
-      <button id="volgende" type="button" aria-label="Volgende dag">›</button>
-      <button id="vandaag" type="button">Vandaag</button>
+    <div class="kop-rechts">
+      <input id="naam" type="text" maxlength="30" placeholder="Je voornaam" aria-label="Je voornaam" autocomplete="given-name">
+      <label class="knop hoofd" for="bestand">Tijdlog laden</label>
+      <input id="bestand" type="file" accept=".jsonl,.json,.txt" multiple>
     </div>
   </header>
+
+  <div class="dagnav" aria-label="Dag kiezen">
+    <button id="vorige" type="button" aria-label="Vorige dag">‹</button>
+    <input id="datum" type="date" aria-label="Datum">
+    <button id="volgende" type="button" aria-label="Volgende dag">›</button>
+    <button id="vandaag" type="button">Vandaag</button>
+  </div>
 
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
+      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
       <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, je agenda, of namen van klanten of projecten.</li>
       <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Dag opslaan klikt, gaat de dag naar Rinse.</li>
       <li>Alleen Rinse ziet de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
@@ -160,15 +190,7 @@ input[type=file]{display:none}
     </ul>
   </details>
 
-  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Zodra je tijdlog is gekoppeld, zie je hier je eigen dag.</div>
-
-  <section class="kaart" aria-labelledby="bronTitel">
-    <h2 id="bronTitel">Claude-tijdlog</h2>
-    <p id="claudeStatus" class="status" style="margin:0 0 10px">Bezig met laden…</p>
-    <div id="bronActies" class="acties" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-    <input id="bestand" type="file" accept=".jsonl,.json,.txt" multiple>
-    <p id="bronHulp" class="status" style="margin:10px 0 0"></p>
-  </section>
+  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Klik op <b>Tijdlog laden</b> en kies het bestand van je dag uit de map <span class="mono">P21-tijdlog</span>.</div>
 
   <section class="kaart" aria-labelledby="dagTitel">
     <div class="rij" style="justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -181,22 +203,16 @@ input[type=file]{display:none}
       </div>
     </div>
     <p class="status" style="margin:0 0 12px">Klik op een blok. Gestippeld is nog niet ingevuld.</p>
-    <div id="lijn" class="lijn"></div>
+    <div class="lijnwrap">
+      <div id="lijn" class="lijn"></div>
+      <div class="zij"><div id="paneelBox" class="paneel" hidden aria-live="polite"><div id="paneel"></div></div></div>
+    </div>
   </section>
-
-  <div id="paneelBox" class="paneel" hidden aria-live="polite"><div id="paneel"></div></div>
 
   <div class="opslaanrij">
     <span id="opslaanStatus" class="status">Nog niet opgeslagen</span>
     <button id="opslaan" class="knop hoofd" type="button">Dag opslaan</button>
   </div>
-
-  <section id="teamKaart" class="kaart" aria-labelledby="teamTitel" hidden>
-    <h2 id="teamTitel">Team (alleen voor jou zichtbaar)</h2>
-    <p class="status" style="margin:0 0 10px">Totalen per persoon over alle opgeslagen dagen.</p>
-    <button id="teamKnop" class="knop" type="button">Overzicht laden</button>
-    <div id="team" class="scroll" style="margin-top:12px"></div>
-  </section>
 </div>
 <script>
 (function(){
@@ -204,9 +220,12 @@ input[type=file]{display:none}
 const PX = 1.4, MIN = 5;
 const CATS = ["Klantwerk","Intern werk","Acquisitie"];
 const CATS_REST = CATS.concat(["Pauze"]);
+const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Pauze":"pauze"};
 let onthoud = {}; // map -> {soort}, alleen in deze browser
-try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; }catch(_){}
-function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); }catch(_){} }
+let naam = "";
+try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; naam = localStorage.getItem("p21naam") || ""; }catch(_){}
+function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); localStorage.setItem("p21naam", naam); }catch(_){} }
+const naamId = () => naam.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
@@ -217,14 +236,14 @@ const verschuif = (dag, n) => { const d = new Date(dag + "T12:00:00"); d.setDate
 const uurMin = m => { const h = Math.floor(m/60), r = Math.round(m%60); return h ? h + " u" + (r ? " " + r + " m" : "") : r + " m"; };
 const goed = s => CATS_REST.includes(s) ? s : null;
 function tekst(tag, txt, cls){ const e = document.createElement(tag); e.textContent = txt; if(cls) e.className = cls; return e; }
-function knop(txt, fn, hoofd){ const b = document.createElement("button"); b.type = "button"; b.className = "knop" + (hoofd ? " hoofd" : ""); b.textContent = txt; b.onclick = fn; return b; }
+function knop(txt, fn){ const b = document.createElement("button"); b.type = "button"; b.className = "knop"; b.textContent = txt; b.onclick = fn; return b; }
 
 const S = {
   datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
   claude:[{s:545,e:618,soort:"Klantwerk",map:"voorbeeld"},{s:785,e:872,soort:"Intern werk",map:"voorbeeld"},{s:930,e:975,soort:"Acquisitie",map:"voorbeeld"}],
-  rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[], scroll:false
+  rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[]
 };
-let db = null, user = null, uid = null;
+let db = null;
 
 /* ---------- opbouw van de dag ---------- */
 /* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
@@ -257,29 +276,38 @@ function blokEl(cls, b, titel, sub, sel){
   const top = (Math.max(b.s,S.werk.s) - S.werk.s) * PX, h = Math.max((Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)) * PX - 2, 14);
   el.style.top = top + "px"; el.style.height = h + "px";
   el.appendChild(tekst("b", titel));
-  if(h > 30){ el.appendChild(tekst("span", sub || (fmt(b.s) + "–" + fmt(b.e)), "t")); }
+  if(h > 30){ el.appendChild(tekst("span", sub, "t")); }
   el.setAttribute("aria-label", titel + ", " + fmt(b.s) + " tot " + fmt(b.e));
   return el;
 }
 function renderLijn(){
   const L = $("lijn"); L.innerHTML = "";
-  L.style.position = "relative"; L.style.height = ((S.werk.e - S.werk.s) * PX) + "px";
+  L.style.height = ((S.werk.e - S.werk.s) * PX) + "px";
   for(let m = Math.ceil(S.werk.s/60)*60; m <= S.werk.e; m += 60){
     const u = tekst("span", fmt(m), "uur"); u.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(u);
     const r = document.createElement("div"); r.className = "raster"; r.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(r);
   }
   const baan = document.createElement("div"); baan.className = "baan"; L.appendChild(baan);
   const isSel = (t,i) => S.sel && S.sel.t === t && S.sel.i === i;
+  const tijd = b => fmt(b.s) + "–" + fmt(b.e);
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + "Claude", b.soort ? null : "kies soort werk · " + fmt(b.s) + "–" + fmt(b.e), isSel("claude",i));
+    const el = b.soort ? blokEl("c-" + KLEUR[b.soort], b, b.soort, tijd(b) + " · Claude", isSel("claude",i)) : blokEl("leeg", b, "Claude · kies soort werk", tijd(b), isSel("claude",i));
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
-    const cls = b.soort === "Pauze" ? "pauze" : b.soort ? "zelf" : "gat";
-    const el = blokEl(cls, b, b.soort || "Wat deed je hier?", null, isSel("rest",i));
+    const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
+    const el = blokEl(cls, b, b.soort || "Wat deed je hier?", tijd(b), isSel("rest",i));
     el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
   S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
   $("dagTitel").textContent = new Date(S.datum + "T12:00:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"});
-  if(S.scroll){ S.scroll = false; const x = L.querySelector(".actief"); if(x && x.scrollIntoView) x.scrollIntoView({block:"center"}); }
+  plaatsPaneel();
+}
+/* het paneel staat naast het gekozen blok */
+function plaatsPaneel(){
+  const box = $("paneelBox"); if(box.hidden || !S.sel) return;
+  const b = S.sel.t === "claude" ? S.claude[S.sel.i] : S.rest[S.sel.i]; if(!b) return;
+  const H = (S.werk.e - S.werk.s) * PX;
+  const top = Math.max(0, (Math.max(b.s,S.werk.s) - S.werk.s) * PX);
+  box.style.top = Math.max(0, Math.min(top, H - box.offsetHeight)) + "px";
 }
 
 /* splitslijn: sleep of gebruik pijltje omhoog/omlaag */
@@ -287,7 +315,7 @@ function zetSplit(i, m){
   const a = S.rest[i], c = S.rest[i+1]; if(!a || !c) return;
   m = Math.max(a.s + MIN, Math.min(c.e - MIN, Math.round(m/MIN)*MIN));
   if(m === a.e) return;
-  a.e = m; c.s = m; S.dirty = true; renderLijn();
+  a.e = m; c.s = m; S.dirty = true; renderLijn(); renderPaneel();
 }
 function handleEl(i){
   const a = S.rest[i];
@@ -318,35 +346,29 @@ function voegSamen(i){
   S.rest.splice(i, 2, {s:a.s, e:c.e, soort:a.soort}); S.sel = {t:"rest", i}; S.dirty = true; alles();
 }
 
-/* ---------- paneel ---------- */
-function chipRij(opties, actief, onKies){
-  const w = document.createElement("div"); w.className = "chips";
-  opties.forEach(o => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = o;
-    c.setAttribute("aria-pressed", String(o === actief)); c.onclick = () => onKies(o); w.appendChild(c); });
-  return w;
-}
+/* ---------- paneel (live: het blok krijgt meteen de kleur van je keuze) ---------- */
 function kies(sel){ S.sel = (S.sel && S.sel.t === sel.t && S.sel.i === sel.i) ? null : sel; renderLijn(); renderPaneel(); }
-function volgendeLeeg(){
-  const l = [];
-  S.claude.forEach((b,i) => { if(!b.soort && zichtbaar(b)) l.push({t:"claude",i,s:b.s}); });
-  S.rest.forEach((b,i) => { if(!b.soort) l.push({t:"rest",i,s:b.s}); });
-  l.sort((a,b) => a.s - b.s);
-  S.sel = l.length ? {t:l[0].t, i:l[0].i} : null; S.scroll = !!S.sel;
-}
 function zetSoort(sel, b, o){
   b.soort = o; S.dirty = true;
   if(sel.t === "claude" && b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o}; bewaar(); S.claude.forEach(x => { if(x.map === b.map && !x.soort) x.soort = o; }); }
-  volgendeLeeg(); alles();
+  alles();
 }
 function renderPaneel(){
   const box = $("paneelBox"), P = $("paneel"); P.innerHTML = "";
   const sel = S.sel;
   if(!sel){ box.hidden = true; return; }
-  box.hidden = false;
   const b = sel.t === "claude" ? S.claude[sel.i] : S.rest[sel.i];
   if(!b){ box.hidden = true; return; }
-  P.appendChild(tekst("p", (sel.t === "claude" ? "Claude" : "Zonder Claude") + ", " + fmt(b.s) + "–" + fmt(b.e) + " (" + uurMin(b.e - b.s) + "). Wat voor werk was dit?", "pk"));
-  P.appendChild(chipRij(sel.t === "claude" ? CATS : CATS_REST, b.soort, o => zetSoort(sel, b, o)));
+  box.hidden = false;
+  P.appendChild(tekst("h3", "Wat deed je hier?"));
+  P.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + " · " + uurMin(b.e - b.s) + (sel.t === "claude" ? " · met Claude" : ""), "tijd mono"));
+  const k = document.createElement("div"); k.className = "keuzes";
+  (sel.t === "claude" ? CATS : CATS_REST).forEach(o => {
+    const c = document.createElement("button"); c.type = "button"; c.className = "keuze"; c.setAttribute("aria-pressed", String(o === b.soort));
+    const sw = document.createElement("span"); sw.className = "sw " + KLEUR[o]; c.append(sw, document.createTextNode(o));
+    c.onclick = () => zetSoort(sel, b, o); k.appendChild(c);
+  });
+  P.appendChild(k);
   const acties = document.createElement("div"); acties.className = "acties";
   if(sel.t === "rest"){
     if(b.e - b.s >= 2*MIN) acties.appendChild(knop("Blok splitsen", () => splits(sel.i)));
@@ -354,7 +376,8 @@ function renderPaneel(){
   }
   acties.appendChild(knop("Klaar", () => { S.sel = null; alles(); }));
   P.appendChild(acties);
-  if(sel.t === "rest") P.appendChild(tekst("p","Deed je in dit blok meer dan één ding? Splits het en sleep de zwarte lijn op de tijdlijn naar de goede plek.","status")).style.margin = "10px 0 0";
+  if(sel.t === "rest") P.appendChild(tekst("p","Deed je hier meer dan één ding? Splits het blok en sleep de zwarte lijn naar de goede plek.","hulp"));
+  plaatsPaneel();
 }
 
 /* ---------- Claude-tijdlog ---------- */
@@ -395,68 +418,18 @@ function wegVoorbeeld(){
   if(!S.voorbeeld) return;
   S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null; $("voorbeeldMelding").hidden = true;
 }
-async function zetLog(regels){
+function zetLog(regels){
   S.logRegels = regels;
   const dagen = [...new Set(regels.map(x => isoDag(x.d)))].sort();
   if(!dagen.includes(S.datum) && dagen.length){ S.datum = dagen[dagen.length-1]; $("datum").value = S.datum; }
   wegVoorbeeld();
-  S.claude = blokkenVoor(S.datum); S.rest = bouwRest([]);
-  S.dirty = true; volgendeLeeg();
-}
-
-/* ---------- map koppelen: eenmalig kiezen, daarna leest het scherm hem zelf ---------- */
-const heeftMap = typeof window.showDirectoryPicker === "function";
-let handle = null, bron = "geen", bronFout = "";
-function idb(){ return new Promise((res,rej) => { const r = indexedDB.open("p21tijdlog-map",1); r.onupgradeneeded = () => r.result.createObjectStore("h"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-async function idbGet(k){ const d = await idb(); return new Promise((res,rej) => { const q = d.transaction("h").objectStore("h").get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
-async function idbSet(k,v){ const d = await idb(); return new Promise((res,rej) => { const t = d.transaction("h","readwrite"); t.objectStore("h").put(v,k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
-async function leesMap(h){
-  let regels = [];
-  for await (const [naam, fh] of h.entries()){
-    if(fh.kind === "file" && /^\d{4}-\d\d-\d\d\.jsonl$/.test(naam)) regels = regels.concat(leesLog(await (await fh.getFile()).text()));
-  }
-  return regels;
-}
-async function laadUitMap(){ const r = await leesMap(handle); bron = "klaar"; if(r.length) await zetLog(r); else bronFout = "In deze map staan nog geen tijdlog-bestanden."; }
-async function startMap(){
-  if(!heeftMap) return;
-  try{ handle = await idbGet("map"); }catch(_){ handle = null; }
-  if(!handle) return;
-  try{ if(await handle.queryPermission({mode:"read"}) === "granted") await laadUitMap(); else bron = "toestemming"; }
-  catch(_){ handle = null; bron = "geen"; }
-}
-async function kiesMap(){
-  bronFout = "";
-  try{
-    handle = await window.showDirectoryPicker({id:"p21tijdlog", mode:"read"});
-    try{ await idbSet("map", handle); }catch(_){}
-    await laadUitMap(); await laadOpgeslagen();
-  }catch(err){ if(!err || err.name !== "AbortError") bronFout = "Je browser laat dit hier niet toe. Kies hieronder het bestand zelf."; }
-  alles();
-}
-async function geefToestemming(){
-  try{ if(await handle.requestPermission({mode:"read"}) === "granted"){ await laadUitMap(); await laadOpgeslagen(); } }catch(_){ bronFout = "Toestemming lukte niet. Kies de map opnieuw."; bron = "geen"; }
-  alles();
+  S.claude = blokkenVoor(S.datum); S.rest = bouwRest([]); S.sel = null; S.dirty = true;
 }
 async function bestanden(files){
   let regels = [];
   for(const f of files) regels = regels.concat(leesLog(await f.text()));
-  if(!regels.length){ bronFout = "Geen tijdlog-regels gevonden in dit bestand."; alles(); return; }
-  bronFout = ""; await zetLog(regels); await laadOpgeslagen(); alles();
-}
-function renderBron(){
-  const A = $("bronActies"); A.innerHTML = "";
-  let st;
-  if(!S.voorbeeld){
-    const t = S.claude.reduce((a,b) => a + (b.e - b.s), 0);
-    st = S.claude.length ? "Geladen: " + S.claude.length + " blok" + (S.claude.length > 1 ? "ken" : "") + " met Claude, samen " + uurMin(t) + "." : "Geladen. Geen Claude-gebruik op deze dag.";
-  } else st = bron === "toestemming" ? "Eén klik nodig: geef dit scherm weer toestemming om je tijdlog-map te lezen." : "Nog niet gekoppeld.";
-  $("claudeStatus").textContent = st;
-  if(heeftMap && bron === "toestemming") A.appendChild(knop("Toestemming geven", geefToestemming, true));
-  else if(heeftMap && bron === "geen") A.appendChild(knop("Map P21-tijdlog kiezen (eenmalig)", kiesMap, true));
-  else if(heeftMap && bron === "klaar") A.appendChild(knop("Opnieuw laden", async () => { await laadUitMap(); await laadOpgeslagen(); alles(); }));
-  const l = document.createElement("label"); l.className = "knop"; l.htmlFor = "bestand"; l.textContent = "Bestand kiezen"; A.appendChild(l);
-  $("bronHulp").textContent = bronFout || (heeftMap ? "De map staat in je thuismap: P21-tijdlog. Je kiest hem één keer; daarna laadt dit scherm je dag zelf." : "Je browser kan de map niet zelf lezen. Kies het bestand van vandaag uit de map P21-tijdlog in je thuismap.");
+  if(!regels.length){ $("opslaanStatus").textContent = "In dit bestand staan geen tijdlog-regels."; return; }
+  zetLog(regels); await laadOpgeslagen(); alles();
 }
 
 /* ---------- totalen, opslaan, laden ---------- */
@@ -468,31 +441,32 @@ function totalen(){
 }
 function renderStatus(){
   const k = $("opslaan");
-  k.disabled = S.voorbeeld || !db || !uid;
+  k.disabled = S.voorbeeld || !db || !naamId();
   if(!db) $("opslaanStatus").textContent = "Opslaan kan alleen als je deze pagina in Claude opent.";
-  else if(S.voorbeeld) $("opslaanStatus").textContent = "Koppel eerst je tijdlog.";
+  else if(S.voorbeeld) $("opslaanStatus").textContent = "Laad eerst je tijdlog.";
+  else if(!naamId()) $("opslaanStatus").textContent = "Vul je voornaam in om op te slaan.";
   else if(S.dirty) $("opslaanStatus").textContent = "Niet opgeslagen wijzigingen";
 }
 async function opslaan(){
-  if(!db || !uid || S.voorbeeld) return;
+  if(!db || !naamId() || S.voorbeeld) return;
   const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
   const blokken = [];
   S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||""}));
   S.rest.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort||""}));
   try{
-    await db.doc("dagen/" + uid).set({laatst:S.datum});
-    await db.doc("dagen/" + uid + "/d/" + S.datum).set({datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, blokken, totalen:totalen(), opgeslagen:new Date().toISOString()});
+    await db.doc("dagen/" + naamId()).set({naam, laatst:S.datum});
+    await db.doc("dagen/" + naamId() + "/d/" + S.datum).set({naam, datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, blokken, totalen:totalen(), opgeslagen:new Date().toISOString()});
     S.dirty = false;
     $("opslaanStatus").textContent = "Opgeslagen om " + new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   }catch(err){
     $("opslaanStatus").textContent = err && err.code === "invalid_argument" ? "Opslaan mag niet met jouw toegang. Vraag Rinse om je als Bijdrager toe te voegen." :
       err && err.code === "quota_exceeded" ? "De opslag is vol. Laat het Rinse weten." : "Opslaan lukte niet. Probeer het opnieuw.";
-  }finally{ k.disabled = false; }
+  }finally{ renderStatus(); }
 }
 async function laadOpgeslagen(){
-  if(!db || !uid) return false;
+  if(!db || !naamId()) return false;
   try{
-    const snap = await db.doc("dagen/" + uid + "/d/" + S.datum).get();
+    const snap = await db.doc("dagen/" + naamId() + "/d/" + S.datum).get();
     if(!snap.exists) return false;
     const d = snap.data(), bl = Array.isArray(d.blokken) ? d.blokken : [];
     if(!bl.some(b => b.bron === "claude" || b.bron === "zelf")) return false;
@@ -514,61 +488,29 @@ async function wisselDag(dag){
   alles();
 }
 
-/* ---------- teamoverzicht (eigenaar) ---------- */
-async function laadTeam(){
-  const T = $("team"); T.innerHTML = ""; T.appendChild(tekst("p","Bezig met laden…","status"));
-  try{
-    const mensen = await db.collection("dagen").get();
-    const rijen = [];
-    for(const p of mensen.docs){
-      const dagen = await db.collection("dagen/" + p.id + "/d").get();
-      const r = {id:p.id, dagen:0, "Klantwerk":0, "Intern werk":0, "Acquisitie":0};
-      dagen.docs.forEach(d => { const x = d.data(); r.dagen++; const t = x.totalen || {cat:{}}; CATS.forEach(k => r[k] += (t.cat && t.cat[k]) || 0); });
-      rijen.push(r);
-    }
-    T.innerHTML = "";
-    if(!rijen.length){ T.appendChild(tekst("p","Nog niemand heeft een dag opgeslagen.","leeg")); return; }
-    const namen = user ? await user.profiles(rijen.map(r => r.id)) : {};
-    const tb = document.createElement("table");
-    const kop = document.createElement("tr"); ["Persoon","Dagen"].concat(CATS).forEach(h => kop.appendChild(tekst("th",h)));
-    const th = document.createElement("thead"); th.appendChild(kop); tb.appendChild(th);
-    const body = document.createElement("tbody");
-    rijen.forEach(r => { const tr = document.createElement("tr");
-      tr.appendChild(tekst("td", (namen[r.id] && namen[r.id].name) || "Teamlid"));
-      tr.appendChild(tekst("td", String(r.dagen), "mono"));
-      CATS.forEach(k => tr.appendChild(tekst("td", uurMin(r[k]), "mono")));
-      body.appendChild(tr); });
-    tb.appendChild(body); T.appendChild(tb);
-  }catch(_){ T.innerHTML = ""; T.appendChild(tekst("p","Laden lukte niet. Probeer het opnieuw.","leeg")); }
-}
-
-function alles(){ renderBron(); renderLijn(); renderPaneel(); renderStatus(); }
+function alles(){ renderLijn(); renderPaneel(); renderStatus(); }
 
 /* ---------- start ---------- */
-$("datum").value = S.datum;
+$("datum").value = S.datum; $("naam").value = naam;
 $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
 $("vorige").onclick = () => wisselDag(verschuif(S.datum,-1));
 $("volgende").onclick = () => wisselDag(verschuif(S.datum,1));
 $("vandaag").onclick = () => wisselDag(isoDag(new Date()));
 $("datum").onchange = e => { if(e.target.value) wisselDag(e.target.value); };
+$("naam").onchange = async e => { naam = e.target.value.trim(); bewaar(); await laadOpgeslagen(); alles(); };
 const nieuweWerkdag = () => { S.rest = bouwRest(S.rest); S.dirty = !S.voorbeeld; S.sel = null; alles(); };
 $("werkS").onchange = e => { const v = parseT(e.target.value); if(v < S.werk.e){ S.werk.s = v; nieuweWerkdag(); } };
 $("werkE").onchange = e => { const v = parseT(e.target.value); if(v > S.werk.s){ S.werk.e = v; nieuweWerkdag(); } };
 $("bestand").onchange = e => { if(e.target.files.length) bestanden(e.target.files); e.target.value = ""; };
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => { e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files.length) bestanden(e.dataTransfer.files); });
 $("opslaan").onclick = opslaan;
-$("teamKnop").onclick = laadTeam;
 alles();
 
-/* bij openen: alles zelf ophalen */
+/* bij openen: een eerder opgeslagen dag komt vanzelf terug */
 (async function(){
-  await startMap();
   if(window.claude && window.claude.use){
-    try{
-      const [d,u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-      db = d; user = u;
-      if(u){ uid = await u.id(); if(await u.isOwner()) $("teamKaart").hidden = !db; }
-      if(db && uid) await laadOpgeslagen();
-    }catch(_){}
+    try{ db = await window.claude.use("db"); if(db) await laadOpgeslagen(); }catch(_){}
   }
   alles();
 })();
