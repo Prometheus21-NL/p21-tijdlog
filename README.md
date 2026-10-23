@@ -28,7 +28,9 @@ Start Claude Code daarna opnieuw (VS Code: Claude-paneel sluiten en openen).
 
 ## Meerdere tabs en tabs die open blijven staan
 
-Een open tab telt niet mee. Er wordt alleen tijd geteld van het moment dat je een vraag stelt tot Claude klaar is (plus 5 minuten). Een tab die klaar is en open blijft staan kost dus geen tijd. Werk je in meerdere tabs tegelijk, dan worden die door elkaar gelegd en telt elke minuut één keer. Het logbestand bewaart daarvoor per regel een willekeurig sessienummer, geen inhoud.
+Een open tab telt niet mee. Er wordt alleen tijd geteld van het moment dat je een vraag stelt tot Claude klaar is (plus 5 minuten). Een tab die klaar is en open blijft staan kost dus geen tijd.
+
+Werk je in meerdere tabs tegelijk, dan krijgt elke tab zijn eigen blok (tab 1, tab 2, ...) en kies je per tab wat het was. Twee tabs naast elkaar mogen dus Klantwerk en Intern werk zijn. Lopen er op hetzelfde moment meerdere tabs, dan wordt die minuut gelijk over de tabs verdeeld, zodat je totaal gelijk blijft aan je echte werktijd. Het logbestand bewaart daarvoor per regel een willekeurig sessienummer, geen inhoud.
 
 ## Wie ben jij? (gedeeld Claude-account)
 

@@ -240,7 +240,7 @@ function knop(txt, fn){ const b = document.createElement("button"); b.type = "bu
 
 const S = {
   datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
-  claude:[{s:545,e:618,soort:"Klantwerk"},{s:785,e:872,soort:"Intern werk"},{s:930,e:975,soort:"Acquisitie"}],
+  claude:[{s:545,e:618,soort:"Klantwerk",tab:1},{s:560,e:640,soort:"Intern werk",tab:2},{s:785,e:872,soort:"Intern werk",tab:1},{s:930,e:975,soort:"Acquisitie",tab:1}],
   rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[]
 };
 let db = null;
@@ -270,15 +270,31 @@ S.rest = bouwRest([]);
 const zichtbaar = b => b.e > S.werk.s && b.s < S.werk.e;
 
 /* ---------- tijdlijn ---------- */
-function blokEl(cls, b, titel, sub, sel){
+function blokEl(cls, b, titel, sub, sel, baanInfo){
   const el = document.createElement("button");
   el.type = "button"; el.className = "blok " + cls + (sel ? " actief" : "");
   const top = (Math.max(b.s,S.werk.s) - S.werk.s) * PX, h = Math.max((Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)) * PX - 2, 14);
   el.style.top = top + "px"; el.style.height = h + "px";
+  if(baanInfo && baanInfo.n > 1){ el.style.right = "auto"; el.style.left = "calc(" + baanInfo.i + " * (100% - 8px) / " + baanInfo.n + " + 4px)"; el.style.width = "calc((100% - 8px) / " + baanInfo.n + " - 3px)"; }
   el.appendChild(tekst("b", titel));
   if(h > 30){ el.appendChild(tekst("span", sub, "t")); }
   el.setAttribute("aria-label", titel + ", " + fmt(b.s) + " tot " + fmt(b.e));
   return el;
+}
+/* tabs die tegelijk liepen komen naast elkaar te staan */
+function rijenVoor(){
+  const idx = S.claude.map((b,i) => i).sort((a,b) => S.claude[a].s - S.claude[b].s);
+  const res = new Array(S.claude.length); let groep = [], groepEind = -1, baanEind = [];
+  const sluit = () => { const n = baanEind.length; groep.forEach(i => { res[i].n = n; }); groep = []; baanEind = []; };
+  idx.forEach(i => {
+    const b = S.claude[i];
+    if(b.s >= groepEind && groep.length) sluit();
+    let l = baanEind.findIndex(e => e <= b.s); if(l < 0){ l = baanEind.length; baanEind.push(0); }
+    baanEind[l] = b.e; groepEind = Math.max(groepEind, b.e);
+    res[i] = {i:l, n:1}; groep.push(i);
+  });
+  sluit();
+  return res;
 }
 function renderLijn(){
   const L = $("lijn"); L.innerHTML = "";
@@ -290,8 +306,10 @@ function renderLijn(){
   const baan = document.createElement("div"); baan.className = "baan"; L.appendChild(baan);
   const isSel = (t,i) => S.sel && S.sel.t === t && S.sel.i === i;
   const tijd = b => fmt(b.s) + "–" + fmt(b.e);
+  const rijen = rijenVoor();
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = b.soort ? blokEl("c-" + KLEUR[b.soort], b, b.soort, tijd(b) + " · Claude", isSel("claude",i)) : blokEl("leeg", b, "Claude · kies soort werk", tijd(b), isSel("claude",i));
+    const tab = b.tab ? "tab " + b.tab : "Claude";
+    const el = b.soort ? blokEl("c-" + KLEUR[b.soort], b, b.soort, tab + " · " + tijd(b), isSel("claude",i), rijen[i]) : blokEl("leeg", b, (b.tab ? "Tab " + b.tab : "Claude") + " · kies soort werk", tijd(b), isSel("claude",i), rijen[i]);
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
@@ -360,7 +378,7 @@ function renderPaneel(){
   if(!b){ box.hidden = true; return; }
   box.hidden = false;
   P.appendChild(tekst("h3", "Wat deed je hier?"));
-  P.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + " · " + uurMin(b.e - b.s) + (sel.t === "claude" ? " · met Claude" : ""), "tijd mono"));
+  P.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + " · " + uurMin(b.e - b.s) + (sel.t === "claude" ? " · met Claude" + (b.tab ? ", tab " + b.tab : "") : ""), "tijd mono"));
   const k = document.createElement("div"); k.className = "keuzes";
   (sel.t === "claude" ? CATS : CATS_REST).forEach(o => {
     const c = document.createElement("button"); c.type = "button"; c.className = "keuze"; c.setAttribute("aria-pressed", String(o === b.soort));
@@ -392,28 +410,34 @@ function blokkenVoor(dag){
   const alle = S.logRegels.filter(x => isoDag(x.d) === dag).sort((a,b) => a.d - b.d);
   const perSessie = {};
   alle.forEach(x => { (perSessie[x.s] = perSessie[x.s] || []).push(x); });
-  const iv = [];
+  const sessies = [];
   /* per sessie (tab): een vraag loopt tot de eerstvolgende "klaar" van dezelfde sessie, +5 min.
      Zonder "klaar" (bv. afgebroken) tellen we hooguit 45 min. Tabs die open staan zonder vraag tellen niet mee. */
-  Object.values(perSessie).forEach(ev => ev.forEach((x,i) => {
-    if(x.e !== "vraag") return;
-    const m = minDag(x); let eind = m + 5;
-    for(let j = i+1; j < ev.length; j++){
-      const mj = minDag(ev[j]);
-      if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
-      if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, Math.min(mj, m + 45)); break; }
-    }
-    iv.push({s:m, e:eind});
-  }));
-  /* tabs door elkaar: overlappende stukken worden één blok, dus elke minuut telt één keer */
-  iv.sort((a,b) => a.s - b.s);
-  const blokken = [];
-  iv.forEach(x => {
-    const l = blokken.length ? blokken[blokken.length-1] : null;
-    if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); }
-    else blokken.push({s:x.s, e:x.e});
+  Object.values(perSessie).forEach(ev => {
+    const iv = [];
+    ev.forEach((x,i) => {
+      if(x.e !== "vraag") return;
+      const m = minDag(x); let eind = m + 5;
+      for(let j = i+1; j < ev.length; j++){
+        const mj = minDag(ev[j]);
+        if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
+        if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, Math.min(mj, m + 45)); break; }
+      }
+      iv.push({s:m, e:eind});
+    });
+    /* binnen één tab horen stukken die minder dan 15 min uit elkaar liggen bij elkaar */
+    const blokken = [];
+    iv.sort((a,b) => a.s - b.s).forEach(x => {
+      const l = blokken.length ? blokken[blokken.length-1] : null;
+      if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); } else blokken.push({s:x.s, e:x.e});
+    });
+    if(blokken.length) sessies.push(blokken);
   });
-  return blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null}));
+  /* tabnummers op volgorde van eerste gebruik; elke tab houdt zijn eigen blokken, ook als ze tegelijk lopen */
+  sessies.sort((a,b) => a[0].s - b[0].s);
+  const res = [];
+  sessies.forEach((blokken,k) => blokken.forEach(b => res.push({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null, tab:k+1})));
+  return res.sort((a,b) => a.s - b.s);
 }
 function wegVoorbeeld(){
   if(!S.voorbeeld) return;
@@ -435,9 +459,16 @@ async function bestanden(files){
 
 /* ---------- totalen, opslaan, laden ---------- */
 function totalen(){
+  /* tegelijk lopende tabs delen de minuut: zo blijft het totaal gelijk aan je echte werktijd */
   const cat = {};
-  const tel = b => { const k = b.soort || "Niet gekozen"; cat[k] = (cat[k]||0) + Math.max(0, Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)); };
-  S.claude.forEach(tel); S.rest.forEach(tel);
+  const voeg = (k, m) => { cat[k] = (cat[k]||0) + m; };
+  for(let m = S.werk.s; m < S.werk.e; m++){
+    const actief = S.claude.filter(b => m >= b.s && m < b.e);
+    if(actief.length){ actief.forEach(b => voeg(b.soort || "Niet gekozen", 1/actief.length)); continue; }
+    const r = S.rest.find(x => m >= x.s && m < x.e);
+    if(r) voeg(r.soort || "Niet gekozen", 1);
+  }
+  Object.keys(cat).forEach(k => { cat[k] = Math.round(cat[k]); });
   return {cat};
 }
 function renderStatus(){
@@ -452,7 +483,7 @@ async function opslaan(){
   if(!db || !naamId() || S.voorbeeld) return;
   const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
   const blokken = [];
-  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||""}));
+  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||"",tab:b.tab||0}));
   S.rest.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort||""}));
   try{
     await db.doc("dagen/" + naamId()).set({naam, laatst:S.datum});
@@ -475,7 +506,7 @@ async function laadOpgeslagen(){
     S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
     $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
     const lees = b => ({s:parseT(b.van), e:parseT(b.tot), soort:goed(b.soort)});
-    S.claude = bl.filter(b => b.bron === "claude").map(b => lees(b));
+    S.claude = bl.filter(b => b.bron === "claude").map(b => Object.assign(lees(b), {tab:b.tab||0}));
     S.rest = bl.filter(b => b.bron === "zelf").map(lees);
     S.dirty = false; S.sel = null;
     $("opslaanStatus").textContent = "Deze dag is al opgeslagen. Wijzigingen? Klik opnieuw op Dag opslaan.";
