@@ -14,7 +14,7 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 | de naam van de map waarin je werkt | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
-In het invulscherm kies je zelf per map: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Het scherm onthoudt je keuze per map.
+In het invulscherm kies je zelf per map: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Het scherm onthoudt je keuze per map. Je agenda wordt niet gelezen.
 
 ## Installeren (1 regel)
 

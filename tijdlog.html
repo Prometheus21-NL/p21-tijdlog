@@ -119,11 +119,27 @@ input[type=file]{display:none}
 @media (prefers-reduced-motion:no-preference){.blok{transition:outline-color .15s}}
 </style>
 
+<style>
+.wrap{max-width:640px}
+.lijn{display:block;grid-template-columns:none}
+.baan{position:absolute;left:56px;right:0;top:0;bottom:0;border-left:1px solid var(--line)}
+.uur{left:0;width:46px;right:auto;text-align:right}
+.split{position:absolute;left:0;right:0;height:22px;transform:translateY(-11px);cursor:ns-resize;touch-action:none;z-index:3;display:flex;align-items:center;justify-content:center}
+.split::before{content:"";position:absolute;left:0;right:0;top:10px;border-top:3px solid var(--ink);border-radius:2px}
+.split span{position:relative;background:var(--ink);color:var(--surface);border-radius:999px;padding:1px 9px;font-size:11.5px}
+.split:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.paneel{position:sticky;bottom:12px;z-index:5;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.paneel .pk{margin:0 0 10px;font-weight:600}
+.paneel .acties{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.opslaanrij{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.chip{padding:8px 14px;font-size:14px}
+.blok.zelf{background:var(--zelf);color:#fff;border-color:var(--zelf)}
+</style>
 <div class="wrap">
   <header class="kop">
     <div>
       <h1>P21 <span>Tijdlog</span></h1>
-      <p>Twee dingen: voor wie of wat werkte je, en hoe lang. Vul de gaten in je dag aan.</p>
+      <p>Kies bij elk stuk van je dag wat voor werk het was.</p>
     </div>
     <div class="dagnav" aria-label="Dag kiezen">
       <button id="vorige" type="button" aria-label="Vorige dag">‹</button>
@@ -136,88 +152,61 @@ input[type=file]{display:none}
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte, voor welk soort werk (Klantwerk, Intern werk of Acquisitie). Namen van klanten of projecten worden niet gevraagd. Bij een gat in je dag eventueel één zin die je zelf typt.</li>
-      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt (de tijdlog leest dat nooit), wat er in een document of mail staat, of de titel van je afspraken. Het scherm leest de titel alleen op jouw computer om een voorstel te doen (bijvoorbeeld Acquisitie bij 'offerte' of 'kennismaking'). Titels worden niet opgeslagen en niet verstuurd; jij kunt elk voorstel aanpassen.</li>
-      <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Opslaan klikt, gaat de dag naar Rinse.</li>
+      <li><b>Wel:</b> van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
+      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, je agenda, of namen van klanten of projecten.</li>
+      <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Dag opslaan klikt, gaat de dag naar Rinse.</li>
       <li>Alleen Rinse ziet de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
       <li>Liever even niet? Typ <span class="mono">/tijdlog:pauze</span> in Claude Code.</li>
     </ul>
   </details>
 
-  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Laad je Claude-tijdlog en haal je agenda op om je eigen dag te zien.</div>
+  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Zodra je tijdlog is gekoppeld, zie je hier je eigen dag.</div>
 
-  <div class="grid">
-    <section class="kaart" aria-labelledby="dagTitel">
-      <div class="rij" style="justify-content:space-between;align-items:baseline;margin-bottom:12px">
-        <h2 id="dagTitel" style="margin:0">Dag</h2>
-        <div class="rij" style="gap:8px;align-items:center">
-          <span class="label">Werkdag</span>
-          <input id="werkS" class="mono" type="time" step="900" aria-label="Begin werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
-          <span class="label">tot</span>
-          <input id="werkE" class="mono" type="time" step="900" aria-label="Einde werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
-        </div>
+  <section class="kaart" aria-labelledby="bronTitel">
+    <h2 id="bronTitel">Claude-tijdlog</h2>
+    <p id="claudeStatus" class="status" style="margin:0 0 10px">Bezig met laden…</p>
+    <div id="bronActies" class="acties" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <input id="bestand" type="file" accept=".jsonl,.json,.txt" multiple>
+    <p id="bronHulp" class="status" style="margin:10px 0 0"></p>
+  </section>
+
+  <section class="kaart" aria-labelledby="dagTitel">
+    <div class="rij" style="justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <h2 id="dagTitel" style="margin:0">Dag</h2>
+      <div class="rij" style="gap:8px;align-items:center">
+        <span class="label">Werkdag</span>
+        <input id="werkS" class="mono" type="time" step="900" aria-label="Begin werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
+        <span class="label">tot</span>
+        <input id="werkE" class="mono" type="time" step="900" aria-label="Einde werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
       </div>
-      <div class="lijn-kop">
-        <span></span>
-        <span class="label"><span class="stip" style="background:var(--accent)"></span>Agenda</span>
-        <span class="label"><span class="stip" style="background:var(--claude)"></span>Claude</span>
-        <span class="label"><span class="stip" style="background:var(--zelf)"></span>De rest</span>
-      </div>
-      <div id="lijn" class="lijn"></div>
-    </section>
+    </div>
+    <p class="status" style="margin:0 0 12px">Klik op een blok. Gestippeld is nog niet ingevuld.</p>
+    <div id="lijn" class="lijn"></div>
+  </section>
 
-    <aside class="zij">
-      <section class="kaart" aria-labelledby="bronTitel">
-        <h2 id="bronTitel">Gegevens van deze dag</h2>
-        <div class="bron">
-          <div class="info"><b><span class="stip" style="background:var(--claude)"></span>Claude-tijdlog</b><small id="claudeStatus">Nog niet geladen</small></div>
-          <label class="knop" for="bestand">Bestand kiezen</label>
-          <input id="bestand" type="file" accept=".jsonl,.json,.txt" multiple>
-        </div>
-        <div class="bron">
-          <div class="info"><b><span class="stip" style="background:var(--accent)"></span>Google Agenda</b><small id="agendaStatus">Nog niet opgehaald</small></div>
-          <button id="agendaKnop" class="knop" type="button">Ophalen</button>
-        </div>
-        <p class="status" style="margin:10px 0 0">Het bestand staat in je thuismap, map <span class="mono">P21-tijdlog</span>, met de datum als naam. Je kunt het ook hierheen slepen.</p>
-      </section>
+  <div id="paneelBox" class="paneel" hidden aria-live="polite"><div id="paneel"></div></div>
 
-      <section class="kaart" aria-labelledby="paneelTitel" aria-live="polite">
-        <h2 id="paneelTitel">Aanvullen</h2>
-        <div id="paneel"></div>
-      </section>
-
-      <section class="kaart" aria-labelledby="somTitel">
-        <h2 id="somTitel">Je dag in cijfers</h2>
-        <div id="som"></div>
-        <div class="rij" style="margin-top:14px;align-items:center;justify-content:space-between">
-          <span id="opslaanStatus" class="status">Nog niet opgeslagen</span>
-          <button id="opslaan" class="knop hoofd" type="button">Dag opslaan</button>
-        </div>
-      </section>
-
-      <section id="teamKaart" class="kaart" aria-labelledby="teamTitel" hidden>
-        <h2 id="teamTitel">Team (alleen voor jou zichtbaar)</h2>
-        <p class="status" style="margin:0 0 10px">Totalen per persoon over alle opgeslagen dagen.</p>
-        <button id="teamKnop" class="knop" type="button">Overzicht laden</button>
-        <div id="team" class="scroll" style="margin-top:12px"></div>
-      </section>
-    </aside>
+  <div class="opslaanrij">
+    <span id="opslaanStatus" class="status">Nog niet opgeslagen</span>
+    <button id="opslaan" class="knop hoofd" type="button">Dag opslaan</button>
   </div>
-</div>
 
+  <section id="teamKaart" class="kaart" aria-labelledby="teamTitel" hidden>
+    <h2 id="teamTitel">Team (alleen voor jou zichtbaar)</h2>
+    <p class="status" style="margin:0 0 10px">Totalen per persoon over alle opgeslagen dagen.</p>
+    <button id="teamKnop" class="knop" type="button">Overzicht laden</button>
+    <div id="team" class="scroll" style="margin-top:12px"></div>
+  </section>
+</div>
 <script>
 (function(){
 "use strict";
-const PX = 1.15; // pixels per minuut
-const CATS = ["Klantwerk","Intern werk","Acquisitie"]; // Klantwerk = voor een klant, Intern werk = voor Prometheus21 zelf, Acquisitie = nieuwe klanten werven
+const PX = 1.4, MIN = 5;
+const CATS = ["Klantwerk","Intern werk","Acquisitie"];
 const CATS_REST = CATS.concat(["Pauze"]);
-const SOORTEN_AGENDA = ["Klantoverleg","Intern overleg","Acquisitie-overleg","Eigen blok"];
-const catVan = b => b.soort === "Klantoverleg" ? "Klantwerk" : b.soort === "Intern overleg" ? "Intern werk" : b.soort === "Acquisitie-overleg" ? "Acquisitie" : b.soort;
-let onthoud = {}; // map -> {soort,naam}, alleen in deze browser
-let namen = [];
-try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; namen = JSON.parse(localStorage.getItem("p21namen") || "[]") || []; }catch(_){}
-function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); localStorage.setItem("p21namen", JSON.stringify(namen)); }catch(_){} }
-function nieuweNaam(n){ n = (n||"").trim(); if(n && !namen.includes(n)){ namen.push(n); bewaar(); } }
+let onthoud = {}; // map -> {soort}, alleen in deze browser
+try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; }catch(_){}
+function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); }catch(_){} }
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
@@ -226,103 +215,107 @@ const parseT = s => { const [h,m] = (s||"0:0").split(":").map(Number); return h*
 const isoDag = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
 const verschuif = (dag, n) => { const d = new Date(dag + "T12:00:00"); d.setDate(d.getDate()+n); return isoDag(d); };
 const uurMin = m => { const h = Math.floor(m/60), r = Math.round(m%60); return h ? h + " u" + (r ? " " + r + " m" : "") : r + " m"; };
-const mode = arr => { const c = {}; let best = "", n = 0; arr.forEach(x => { if(!x) return; c[x] = (c[x]||0)+1; if(c[x] > n){ n = c[x]; best = x; } }); return best; };
-
-function voorbeeld(){
-  return {
-    claude:[{s:545,e:618,soort:"Klantwerk",naam:"",map:"map-a"},{s:785,e:872,soort:"Intern werk",naam:"",map:"map-b"},{s:930,e:975,soort:"Acquisitie",naam:"",map:"map-c"}],
-    agenda:[{s:510,e:525,soort:"Intern overleg",naam:"",titel:"Daily"},{s:660,e:720,soort:"Klantoverleg",naam:"",titel:"Sprintreview"},{s:600,e:660,soort:"Eigen blok",naam:"",titel:"Document maken"}],
-    zelf:[{s:618,e:645,soort:"Intern werk",naam:"",notitie:"mail beantwoord"}]
-  };
-}
+const goed = s => CATS_REST.includes(s) ? s : null;
+function tekst(tag, txt, cls){ const e = document.createElement(tag); e.textContent = txt; if(cls) e.className = cls; return e; }
+function knop(txt, fn, hoofd){ const b = document.createElement("button"); b.type = "button"; b.className = "knop" + (hoofd ? " hoofd" : ""); b.textContent = txt; b.onclick = fn; return b; }
 
 const S = {
-  datum: isoDag(new Date()),
-  werk:{s:510,e:1020}, pauze:{s:720,e:780},
-  claude:[], agenda:[], zelf:[],
-  voorbeeld:true, sel:null, dirty:false, logRegels:[], agendaGehaald:false
+  datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
+  claude:[{s:545,e:618,soort:"Klantwerk",map:"voorbeeld"},{s:785,e:872,soort:"Intern werk",map:"voorbeeld"},{s:930,e:975,soort:"Acquisitie",map:"voorbeeld"}],
+  rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[], scroll:false
 };
-Object.assign(S, voorbeeld());
+let db = null, user = null, uid = null;
 
-let db = null, user = null, uid = null, mcp = null;
-
-/* ---------- berekeningen ---------- */
-function gedekt(){
-  const iv = [];
-  S.claude.forEach(b => iv.push([b.s,b.e]));
-  S.agenda.forEach(b => { if(b.soort !== "Eigen blok") iv.push([b.s,b.e]); });
-  S.zelf.forEach(b => iv.push([b.s,b.e]));
-  iv.push([S.pauze.s,S.pauze.e]);
-  const c = iv.map(([a,b]) => [Math.max(a,S.werk.s), Math.min(b,S.werk.e)]).filter(([a,b]) => b > a).sort((x,y) => x[0]-y[0]);
-  const m = [];
-  c.forEach(x => { if(m.length && x[0] <= m[m.length-1][1]) m[m.length-1][1] = Math.max(m[m.length-1][1], x[1]); else m.push(x.slice()); });
-  return m;
+/* ---------- opbouw van de dag ---------- */
+/* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
+function bouwRest(oud){
+  const n = S.werk.e - S.werk.s, vrij = new Array(Math.max(0,n)).fill(true);
+  S.claude.forEach(b => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++) vrij[m - S.werk.s] = false; });
+  const res = []; let a = null;
+  const sluit = end => {
+    if(a === null) return;
+    const bs = S.werk.s + a, be = S.werk.s + end;
+    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    for(let i = 0; i < p.length-1; i++){
+      const s = p[i], e = p[i+1], lunch = s >= S.lunch.s && e <= S.lunch.e;
+      if(e - s >= (lunch ? MIN : 10)) res.push({s, e, soort:null, lunch});
+    }
+    a = null;
+  };
+  for(let i = 0; i < n; i++){ if(vrij[i]){ if(a === null) a = i; } else sluit(i); }
+  sluit(n);
+  res.forEach(r => { const o = oud.find(x => r.s >= x.s && r.s < x.e); r.soort = o && o.soort ? o.soort : (r.lunch ? "Pauze" : null); delete r.lunch; });
+  return res;
 }
-/* elke minuut telt één keer: afspraak gaat voor Claude, Claude voor zelf ingevuld, pauze komt als laatste */
-function perMinuut(){
-  const n = S.werk.e - S.werk.s, r = new Array(n).fill(null);
-  const zet = (b, cat, naam) => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++){ if(!r[m - S.werk.s]) r[m - S.werk.s] = {cat, naam: naam || ""}; } };
-  S.agenda.filter(b => b.soort !== "Eigen blok").forEach(b => zet(b, catVan(b), b.naam));
-  S.claude.forEach(b => zet(b, b.soort || "Niet gekozen", ""));
-  S.zelf.filter(b => b.soort !== "Pauze").forEach(b => zet(b, b.soort, b.naam));
-  zet(S.pauze, "Pauze", ""); S.zelf.filter(b => b.soort === "Pauze").forEach(b => zet(b, "Pauze", ""));
-  return r;
-}
-function totalen(){
-  const cat = {}, naam = {};
-  perMinuut().forEach(x => { if(!x) return; cat[x.cat] = (cat[x.cat]||0) + 1; if(x.naam && x.cat !== "Pauze"){ const k = x.cat + " · " + x.naam; naam[k] = (naam[k]||0) + 1; } });
-  return {cat, naam};
-}
-function gaten(){
-  const m = gedekt(), g = []; let t = S.werk.s;
-  m.forEach(([a,b]) => { if(a - t >= 10) g.push({s:t,e:a}); t = Math.max(t,b); });
-  if(S.werk.e - t >= 10) g.push({s:t,e:S.werk.e});
-  return g;
-}
+S.rest = bouwRest([]);
+const zichtbaar = b => b.e > S.werk.s && b.s < S.werk.e;
 
 /* ---------- tijdlijn ---------- */
 function blokEl(cls, b, titel, sub, sel){
   const el = document.createElement("button");
-  el.type = "button";
-  el.className = "blok " + cls + (sel ? " actief" : "");
+  el.type = "button"; el.className = "blok " + cls + (sel ? " actief" : "");
   const top = (Math.max(b.s,S.werk.s) - S.werk.s) * PX, h = Math.max((Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)) * PX - 2, 14);
   el.style.top = top + "px"; el.style.height = h + "px";
-  const bt = document.createElement("b"); bt.textContent = titel; el.appendChild(bt);
-  if(h > 30){ const t = document.createElement("span"); t.className = "t"; t.textContent = sub || (fmt(b.s) + "–" + fmt(b.e)); el.appendChild(t); }
+  el.appendChild(tekst("b", titel));
+  if(h > 30){ el.appendChild(tekst("span", sub || (fmt(b.s) + "–" + fmt(b.e)), "t")); }
   el.setAttribute("aria-label", titel + ", " + fmt(b.s) + " tot " + fmt(b.e));
   return el;
 }
-function zichtbaar(b){ return b.e > S.werk.s && b.s < S.werk.e; }
-
 function renderLijn(){
   const L = $("lijn"); L.innerHTML = "";
-  L.classList.toggle("voorbeeld", S.voorbeeld);
-  const H = (S.werk.e - S.werk.s) * PX; L.style.height = H + "px";
-  const uren = document.createElement("div"); uren.className = "uren";
+  L.style.position = "relative"; L.style.height = ((S.werk.e - S.werk.s) * PX) + "px";
   for(let m = Math.ceil(S.werk.s/60)*60; m <= S.werk.e; m += 60){
-    const u = document.createElement("span"); u.className = "uur"; u.style.top = ((m - S.werk.s) * PX) + "px"; u.textContent = fmt(m); uren.appendChild(u);
+    const u = tekst("span", fmt(m), "uur"); u.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(u);
     const r = document.createElement("div"); r.className = "raster"; r.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(r);
   }
-  L.appendChild(uren);
-  const bA = document.createElement("div"), bC = document.createElement("div"), bR = document.createElement("div");
-  [bA,bC,bR].forEach(b => { b.className = "baan"; L.appendChild(b); });
-
-  S.agenda.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const cls = b.soort === "Klantoverleg" || b.soort === "Acquisitie-overleg" ? "klant" : b.soort === "Intern overleg" ? "intern" : "eigen";
-    const el = blokEl(cls, b, b.titel || b.soort, b.titel ? b.soort + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "agenda" && S.sel.i === i);
-    el.onclick = () => kies({t:"agenda",i}); bA.appendChild(el); });
+  const baan = document.createElement("div"); baan.className = "baan"; L.appendChild(baan);
+  const isSel = (t,i) => S.sel && S.sel.t === t && S.sel.i === i;
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + (b.naam || b.map || "Claude"), (b.soort ? "" : "kies soort werk · ") + fmt(b.s) + "–" + fmt(b.e), S.sel && S.sel.t === "claude" && S.sel.i === i);
-    el.onclick = () => kies({t:"claude",i}); bC.appendChild(el); });
-  if(zichtbaar(S.pauze)){ const p = blokEl("pauze", S.pauze, "Pauze", null, S.sel && S.sel.t === "pauze"); p.onclick = () => kies({t:"pauze"}); bR.appendChild(p); }
-  S.zelf.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const el = blokEl("zelf", b, b.soort + (b.naam ? " · " + b.naam : ""), b.notitie ? b.notitie + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "zelf" && S.sel.i === i);
-    el.onclick = () => kies({t:"zelf",i}); bR.appendChild(el); });
-  gaten().forEach(g => {
-    const el = blokEl("gat", g, "Wat deed je hier?", fmt(g.s) + "–" + fmt(g.e), S.sel && S.sel.t === "gat" && S.sel.s === g.s);
-    el.onclick = () => kies({t:"gat",s:g.s,e:g.e}); bR.appendChild(el);
-  });
+    const el = blokEl("claude", b, (b.soort ? b.soort + " · " : "") + "Claude", b.soort ? null : "kies soort werk · " + fmt(b.s) + "–" + fmt(b.e), isSel("claude",i));
+    el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
+  S.rest.forEach((b,i) => {
+    const cls = b.soort === "Pauze" ? "pauze" : b.soort ? "zelf" : "gat";
+    const el = blokEl(cls, b, b.soort || "Wat deed je hier?", null, isSel("rest",i));
+    el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
+  S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
   $("dagTitel").textContent = new Date(S.datum + "T12:00:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"});
+  if(S.scroll){ S.scroll = false; const x = L.querySelector(".actief"); if(x && x.scrollIntoView) x.scrollIntoView({block:"center"}); }
+}
+
+/* splitslijn: sleep of gebruik pijltje omhoog/omlaag */
+function zetSplit(i, m){
+  const a = S.rest[i], c = S.rest[i+1]; if(!a || !c) return;
+  m = Math.max(a.s + MIN, Math.min(c.e - MIN, Math.round(m/MIN)*MIN));
+  if(m === a.e) return;
+  a.e = m; c.s = m; S.dirty = true; renderLijn();
+}
+function handleEl(i){
+  const a = S.rest[i];
+  const h = document.createElement("div"); h.className = "split"; h.tabIndex = 0; h.setAttribute("role","slider"); h.dataset.i = i;
+  h.setAttribute("aria-label","Splitslijn. Pijltje omhoog of omlaag verplaatst hem."); h.setAttribute("aria-valuetext", fmt(a.e));
+  h.style.top = ((a.e - S.werk.s) * PX) + "px"; h.appendChild(tekst("span", fmt(a.e), "mono"));
+  h.onpointerdown = e => {
+    e.preventDefault(); e.stopPropagation();
+    const beweeg = ev => { const y = ev.clientY - $("lijn").getBoundingClientRect().top; zetSplit(i, S.werk.s + y / PX); };
+    const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderStatus(); };
+    window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  };
+  h.onkeydown = e => {
+    if(e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault(); zetSplit(i, S.rest[i].e + (e.key === "ArrowUp" ? -MIN : MIN));
+    const nieuw = $("lijn").querySelector('.split[data-i="' + i + '"]'); if(nieuw) nieuw.focus();
+  };
+  return h;
+}
+function splits(i){
+  const b = S.rest[i]; if(!b || b.e - b.s < 2*MIN) return;
+  const m = Math.round((b.s + b.e)/2/MIN)*MIN;
+  S.rest.splice(i, 1, {s:b.s, e:m, soort:b.soort}, {s:m, e:b.e, soort:null});
+  S.sel = {t:"rest", i:i+1}; S.dirty = true; alles();
+}
+function voegSamen(i){
+  const a = S.rest[i], c = S.rest[i+1]; if(!a || !c || a.e !== c.s) return;
+  S.rest.splice(i, 2, {s:a.s, e:c.e, soort:a.soort}); S.sel = {t:"rest", i}; S.dirty = true; alles();
 }
 
 /* ---------- paneel ---------- */
@@ -332,110 +325,37 @@ function chipRij(opties, actief, onKies){
     c.setAttribute("aria-pressed", String(o === actief)); c.onclick = () => onKies(o); w.appendChild(c); });
   return w;
 }
-function tekst(tag, txt, cls){ const e = document.createElement(tag); e.textContent = txt; if(cls) e.className = cls; return e; }
-function tijdVeld(id, lab, waarde, min, max){
-  const v = document.createElement("div"); v.className = "veld";
-  const l = document.createElement("label"); l.className = "label"; l.htmlFor = id; l.textContent = lab;
-  const i = document.createElement("input"); i.type = "time"; i.id = id; i.className = "mono"; i.step = 300; i.value = fmt(waarde); i.min = fmt(min); i.max = fmt(max);
-  v.append(l,i); return v;
+function kies(sel){ S.sel = (S.sel && S.sel.t === sel.t && S.sel.i === sel.i) ? null : sel; renderLijn(); renderPaneel(); }
+function volgendeLeeg(){
+  const l = [];
+  S.claude.forEach((b,i) => { if(!b.soort && zichtbaar(b)) l.push({t:"claude",i,s:b.s}); });
+  S.rest.forEach((b,i) => { if(!b.soort) l.push({t:"rest",i,s:b.s}); });
+  l.sort((a,b) => a.s - b.s);
+  S.sel = l.length ? {t:l[0].t, i:l[0].i} : null; S.scroll = !!S.sel;
 }
-
+function zetSoort(sel, b, o){
+  b.soort = o; S.dirty = true;
+  if(sel.t === "claude" && b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o}; bewaar(); S.claude.forEach(x => { if(x.map === b.map && !x.soort) x.soort = o; }); }
+  volgendeLeeg(); alles();
+}
 function renderPaneel(){
-  const P = $("paneel"); P.innerHTML = "";
+  const box = $("paneelBox"), P = $("paneel"); P.innerHTML = "";
   const sel = S.sel;
-  const g = gaten();
-  if(!sel){
-    P.appendChild(tekst("p", g.length ? "Klik op een gestippeld vak \"Wat deed je hier?\" in je dag. Daar zat je niet in een meeting en niet in Claude. Kies dan wat je deed." : "Je hele werkdag is verklaard. Klik op Dag opslaan.", "leeg"));
-    return;
+  if(!sel){ box.hidden = true; return; }
+  box.hidden = false;
+  const b = sel.t === "claude" ? S.claude[sel.i] : S.rest[sel.i];
+  if(!b){ box.hidden = true; return; }
+  P.appendChild(tekst("p", (sel.t === "claude" ? "Claude" : "Zonder Claude") + ", " + fmt(b.s) + "–" + fmt(b.e) + " (" + uurMin(b.e - b.s) + "). Wat voor werk was dit?", "pk"));
+  P.appendChild(chipRij(sel.t === "claude" ? CATS : CATS_REST, b.soort, o => zetSoort(sel, b, o)));
+  const acties = document.createElement("div"); acties.className = "acties";
+  if(sel.t === "rest"){
+    if(b.e - b.s >= 2*MIN) acties.appendChild(knop("Blok splitsen", () => splits(sel.i)));
+    const v = S.rest[sel.i+1]; if(v && v.s === b.e) acties.appendChild(knop("Samenvoegen met volgende", () => voegSamen(sel.i)));
   }
-  const st = document.createElement("div"); st.className = "stack"; P.appendChild(st);
-  const naamVeld = () => document.createDocumentFragment(); // namen van klanten of projecten worden niet gevraagd
-  const catKies = (b, opties) => chipRij(opties, b.soort, o => { b.soort = o; S.dirty = true; if(b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o, naam:b.naam || ""}; bewaar(); pasOnthoudenToe(); } alles(); });
-  const catUitleg = () => tekst("p","Klantwerk = werk voor een klant. Intern werk = werk voor Prometheus21 zelf. Acquisitie = nieuwe klanten werven.","status");
-  if(sel.t === "gat"){
-    st.appendChild(tekst("p", "Tussen " + fmt(sel.s) + " en " + fmt(sel.e) + " zat je niet in een meeting en niet in Claude. Wat deed je?", ""));
-    const rij = document.createElement("div"); rij.className = "rij";
-    rij.append(tijdVeld("gatVan","Van",sel.s,sel.s,sel.e), tijdVeld("gatTot","Tot",sel.e,sel.s,sel.e)); st.appendChild(rij);
-    const nb = {soort:null, naam:""};
-    st.appendChild(tekst("span","Voor wie of wat?","label"));
-    const chips = chipRij(CATS_REST, null, o => { nb.soort = o; chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c.textContent === o))); voeg.disabled = false; });
-    st.appendChild(chips); st.appendChild(catUitleg());
-    st.appendChild(naamVeld(nb, "gatNaam"));
-    const nv = document.createElement("div"); nv.className = "veld";
-    const nl = document.createElement("label"); nl.className = "label"; nl.htmlFor = "notitie"; nl.textContent = "Wat deed je? Eén zin (mag leeg)";
-    const ni = document.createElement("input"); ni.id = "notitie"; ni.maxLength = 80; ni.placeholder = "bv. offerte nagekeken";
-    nv.append(nl, ni); st.appendChild(nv);
-    st.appendChild(tekst("p","Geen namen van personen of inhoud nodig. Bij Pauze hoef je niets in te vullen.","status"));
-    const voeg = document.createElement("button"); voeg.type = "button"; voeg.className = "knop hoofd"; voeg.textContent = "Toevoegen"; voeg.disabled = true;
-    voeg.onclick = () => {
-      let a = parseT($("gatVan").value), b = parseT($("gatTot").value);
-      a = Math.max(sel.s, Math.min(a, sel.e)); b = Math.max(sel.s, Math.min(b, sel.e));
-      if(b - a < 5){ $("gatTot").focus(); return; }
-            S.zelf.push({s:a,e:b,soort:nb.soort,naam:"",notitie:ni.value.trim()});
-      S.zelf.sort((x,y) => x.s - y.s);
-      S.dirty = true; S.sel = null; volgendGat(); alles();
-    };
-    st.appendChild(voeg);
-  } else if(sel.t === "zelf"){
-    const b = S.zelf[sel.i];
-    st.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + (b.notitie ? " · " + b.notitie : ""), "mono"));
-    st.appendChild(catKies(b, CATS_REST));
-    if(b.soort !== "Pauze") st.appendChild(naamVeld(b, "zelfNaam"));
-    const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Weghalen";
-    del.onclick = () => { S.zelf.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
-  } else if(sel.t === "claude"){
-    const b = S.claude[sel.i];
-    st.appendChild(tekst("p", "Claude, " + fmt(b.s) + "–" + fmt(b.e) + (b.map ? ", map " + b.map : "") + ". Voor wie of wat werkte je? Dit onthoudt het scherm per map, dus je kiest het maar één keer.", ""));
-    st.appendChild(catKies(b, CATS)); st.appendChild(catUitleg());
-    st.appendChild(naamVeld(b, "claudeNaam"));
-  } else if(sel.t === "agenda"){
-    const b = S.agenda[sel.i];
-    st.appendChild(tekst("p", (b.titel ? b.titel + ", " : "") + fmt(b.s) + "–" + fmt(b.e) + ". Wat voor afspraak was dit?", ""));
-    st.appendChild(chipRij(SOORTEN_AGENDA, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
-    st.appendChild(tekst("p","Klantoverleg telt als Klantwerk, Intern overleg als Intern werk, Acquisitie-overleg als Acquisitie (bijvoorbeeld een kennismaking of offertegesprek met een nieuwe klant). Het scherm zet externe meetings zelf op Klantoverleg; pas het aan als het eigenlijk acquisitie was. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
-    if(b.soort !== "Eigen blok") st.appendChild(naamVeld(b, "agendaNaam"));
-    const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Ging niet door, weghalen";
-    del.onclick = () => { S.agenda.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
-  } else if(sel.t === "pauze"){
-    st.appendChild(tekst("p","Wanneer had je pauze?",""));
-    const rij = document.createElement("div"); rij.className = "rij";
-    rij.append(tijdVeld("pS","Van",S.pauze.s,0,1439), tijdVeld("pE","Tot",S.pauze.e,0,1439)); st.appendChild(rij);
-    const ok = document.createElement("button"); ok.type = "button"; ok.className = "knop hoofd"; ok.textContent = "Pauze aanpassen";
-    ok.onclick = () => { const a = parseT($("pS").value), b = parseT($("pE").value); if(b > a){ S.pauze = {s:a,e:b}; S.dirty = true; S.sel = null; alles(); } };
-    st.appendChild(ok);
-  }
+  acties.appendChild(knop("Klaar", () => { S.sel = null; alles(); }));
+  P.appendChild(acties);
+  if(sel.t === "rest") P.appendChild(tekst("p","Deed je in dit blok meer dan één ding? Splits het en sleep de zwarte lijn op de tijdlijn naar de goede plek.","status")).style.margin = "10px 0 0";
 }
-function volgendGat(){
-  const i = S.claude.findIndex(b => !b.soort);
-  if(i >= 0){ S.sel = {t:"claude",i}; return; }
-  const g = gaten(); if(g.length) S.sel = {t:"gat",s:g[0].s,e:g[0].e};
-}
-function kies(sel){ S.sel = sel; renderLijn(); renderPaneel(); }
-
-/* ---------- samenvatting ---------- */
-function renderSom(){
-  const W = $("som"); W.innerHTML = "";
-  const totaal = S.werk.e - S.werk.s;
-  const T = totalen();
-  const open = gaten().reduce((t,g) => t + (g.e - g.s), 0);
-  const verklaard = Math.max(0, totaal - open);
-  const pct = totaal ? Math.round(verklaard / totaal * 100) : 0;
-  const kop = document.createElement("div"); kop.className = "rij"; kop.style.alignItems = "baseline"; kop.style.justifyContent = "space-between";
-  kop.append(tekst("span", pct + "%", "groot"), tekst("span", "van je werkdag is verklaard", "status"));
-  W.appendChild(kop);
-  const balk = document.createElement("div"); balk.className = "balk"; balk.setAttribute("role","img");
-  balk.setAttribute("aria-label", pct + " procent verklaard");
-  [["Klantwerk","var(--accent)"],["Intern werk","var(--claude)"],["Acquisitie","var(--zelf)"],["Niet gekozen","var(--accent-soft)"],["Pauze","var(--pauze)"]].forEach(([k,c]) => {
-    const s = document.createElement("span"); s.style.width = (totaal ? Math.min(100, (T.cat[k]||0)/totaal*100) : 0) + "%"; s.style.background = c; balk.appendChild(s); });
-  W.appendChild(balk);
-  const t = document.createElement("div"); t.className = "tot";
-  [["Klantwerk",T.cat["Klantwerk"]||0],["Intern werk",T.cat["Intern werk"]||0],["Acquisitie",T.cat["Acquisitie"]||0],["Claude-tijd zonder keuze",T.cat["Niet gekozen"]||0],["Pauze",T.cat["Pauze"]||0],["Nog open",open]].forEach(([n,m]) => {
-    t.append(tekst("span", n), tekst("span", uurMin(m), "mono")); });
-  W.appendChild(t);
-  W.appendChild(tekst("p","Meetings en Claude kunnen elkaar overlappen. Elke minuut telt maar één keer.","status"));
-}
-
-function alles(){ renderLijn(); renderPaneel(); renderSom(); renderStatus(); }
 
 /* ---------- Claude-tijdlog ---------- */
 function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
@@ -461,100 +381,107 @@ function blokkenVoor(dag){
   });
   const blokken = [];
   iv.forEach(x => {
-    const laatste = blokken.length ? blokken[blokken.length-1] : null;
-    if(laatste && laatste.map === x.map && x.s - laatste.e <= 15){ laatste.e = Math.max(laatste.e, x.e); }
+    const l = blokken.length ? blokken[blokken.length-1] : null;
+    if(l && l.map === x.map && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); }
     else blokken.push({s:x.s, e:x.e, map:x.map});
   });
   blokken.sort((a,b) => a.s - b.s);
   blokken.forEach((b,i) => { const v = blokken[i+1]; if(v && b.e > v.s) b.e = Math.max(v.s, b.s + 5); });
-  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:"", naam:"", map:b.map}));
-  pasOnthoudenToe(res);
+  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null, map:b.map}));
+  res.forEach(b => { const o = b.map && onthoud[b.map]; if(o && CATS.includes(o.soort)) b.soort = o.soort; });
   return res;
 }
-function pasOnthoudenToe(lijst){
-  (lijst || S.claude).forEach(b => { const o = b.map && onthoud[b.map]; if(o && CATS.includes(o.soort)){ if(!b.soort) b.soort = o.soort; } });
-}
-async function bestanden(files){
-  let n = 0;
-  for(const f of files){ const txt = await f.text(); const r = leesLog(txt); n += r.length; S.logRegels = S.logRegels.concat(r); }
-  if(!n){ $("claudeStatus").textContent = "Geen tijdlog-regels gevonden in dit bestand."; return; }
-  if(!S.logRegels.some(x => isoDag(x.d) === S.datum)){
-    const dagen = mode(S.logRegels.map(x => isoDag(x.d))); if(dagen) { S.datum = dagen; $("datum").value = dagen; await laadOpgeslagen(); }
-  }
-  wegVoorbeeld();
-  S.claude = blokkenVoor(S.datum);
-  S.dirty = true; volgendGat(); alles();
-}
-function claudeStatusTekst(){
-  if(S.voorbeeld) return "Nog niet geladen";
-  if(!S.claude.length) return S.logRegels.length ? "Geen Claude-gebruik op deze dag" : "Nog niet geladen";
-  const t = S.claude.reduce((a,b) => a + (b.e - b.s), 0);
-  return S.claude.length + " blok" + (S.claude.length > 1 ? "ken" : "") + ", samen " + uurMin(t);
-}
-
-/* ---------- agenda ---------- */
-async function haalAgenda(){
-  const st = $("agendaStatus");
-  if(!mcp){ st.textContent = "Agenda ophalen werkt alleen als je deze pagina in Claude opent. Vul meetings anders zelf in bij de open vakken."; return; }
-  $("agendaKnop").disabled = true; st.textContent = "Bezig met ophalen…";
-  try{
-    const res = await mcp.callTool("Google Calendar","list_events",{startTime:S.datum + "T00:00:00", endTime:verschuif(S.datum,1) + "T00:00:00", orderBy:"startTime", pageSize:100});
-    const evs = (res.payload && res.payload.events) || [];
-    const lijst = [];
-    evs.forEach(e => {
-      if(!e.start || !e.start.dateTime || !e.end || !e.end.dateTime) return;
-      if(e.status === "cancelled" || e.transparency === "transparent") return;
-      const ik = (e.attendees||[]).find(a => a.self);
-      if(ik && ik.responseStatus === "declined") return;
-      const a = new Date(e.start.dateTime), b = new Date(e.end.dateTime);
-      if(isoDag(a) !== S.datum) return;
-      const anderen = (e.attendees||[]).filter(x => !x.self && !x.resource);
-      const acq = /offerte|kennismaking|intake|pitch|demo|prospect|lead|acquisitie|sales|introgesprek|verkoop/i.test(e.summary||"");
-      const soort = !anderen.length ? "Eigen blok" : anderen.some(x => !/@prometheus21\.nl$/i.test(x.email||"")) ? (acq ? "Acquisitie-overleg" : "Klantoverleg") : "Intern overleg";
-      lijst.push({s:a.getHours()*60+a.getMinutes(), e:b.getHours()*60+b.getMinutes() || 1440, soort, naam:"", titel:e.summary||""});
-    });
-    wegVoorbeeld();
-    S.agenda = lijst; S.agendaGehaald = true; S.dirty = true;
-    st.textContent = lijst.length ? lijst.length + " afspraken binnen je dag" : "Geen afspraken op deze dag";
-    volgendGat(); alles();
-  }catch(err){
-    const c = err && err.code;
-    st.textContent =
-      c === "server_not_connected" ? "Google Agenda is niet gekoppeld. Koppel hem in claude.ai bij Instellingen → Connectors en probeer opnieuw." :
-      c === "needs_reauth" ? "De koppeling met Google Agenda is verlopen. Verbind hem opnieuw in claude.ai bij Instellingen → Connectors." :
-      c === "not_in_manifest" || c === "approval_required" ? "Je hebt (nog) geen toestemming gegeven om je agenda te lezen. Klik opnieuw op Ophalen en kies Toestaan." :
-      c === "selection_required" ? "Je hebt meer dan één Google Agenda-koppeling. Kies er één in de melding van Claude en probeer opnieuw." :
-      c === "server_unavailable" ? "Google Agenda reageert even niet. Probeer het over een minuut opnieuw." :
-      "Ophalen lukte niet" + (err && err.message ? ": " + err.message : ".");
-  }finally{ $("agendaKnop").disabled = false; }
-}
-
 function wegVoorbeeld(){
   if(!S.voorbeeld) return;
-  S.voorbeeld = false; S.claude = []; S.agenda = []; S.zelf = []; S.sel = null;
-  $("voorbeeldMelding").hidden = true;
+  S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null; $("voorbeeldMelding").hidden = true;
+}
+async function zetLog(regels){
+  S.logRegels = regels;
+  const dagen = [...new Set(regels.map(x => isoDag(x.d)))].sort();
+  if(!dagen.includes(S.datum) && dagen.length){ S.datum = dagen[dagen.length-1]; $("datum").value = S.datum; }
+  wegVoorbeeld();
+  S.claude = blokkenVoor(S.datum); S.rest = bouwRest([]);
+  S.dirty = true; volgendeLeeg();
 }
 
-/* ---------- opslaan / laden ---------- */
+/* ---------- map koppelen: eenmalig kiezen, daarna leest het scherm hem zelf ---------- */
+const heeftMap = typeof window.showDirectoryPicker === "function";
+let handle = null, bron = "geen", bronFout = "";
+function idb(){ return new Promise((res,rej) => { const r = indexedDB.open("p21tijdlog-map",1); r.onupgradeneeded = () => r.result.createObjectStore("h"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(k){ const d = await idb(); return new Promise((res,rej) => { const q = d.transaction("h").objectStore("h").get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+async function idbSet(k,v){ const d = await idb(); return new Promise((res,rej) => { const t = d.transaction("h","readwrite"); t.objectStore("h").put(v,k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+async function leesMap(h){
+  let regels = [];
+  for await (const [naam, fh] of h.entries()){
+    if(fh.kind === "file" && /^\d{4}-\d\d-\d\d\.jsonl$/.test(naam)) regels = regels.concat(leesLog(await (await fh.getFile()).text()));
+  }
+  return regels;
+}
+async function laadUitMap(){ const r = await leesMap(handle); bron = "klaar"; if(r.length) await zetLog(r); else bronFout = "In deze map staan nog geen tijdlog-bestanden."; }
+async function startMap(){
+  if(!heeftMap) return;
+  try{ handle = await idbGet("map"); }catch(_){ handle = null; }
+  if(!handle) return;
+  try{ if(await handle.queryPermission({mode:"read"}) === "granted") await laadUitMap(); else bron = "toestemming"; }
+  catch(_){ handle = null; bron = "geen"; }
+}
+async function kiesMap(){
+  bronFout = "";
+  try{
+    handle = await window.showDirectoryPicker({id:"p21tijdlog", mode:"read"});
+    try{ await idbSet("map", handle); }catch(_){}
+    await laadUitMap(); await laadOpgeslagen();
+  }catch(err){ if(!err || err.name !== "AbortError") bronFout = "Je browser laat dit hier niet toe. Kies hieronder het bestand zelf."; }
+  alles();
+}
+async function geefToestemming(){
+  try{ if(await handle.requestPermission({mode:"read"}) === "granted"){ await laadUitMap(); await laadOpgeslagen(); } }catch(_){ bronFout = "Toestemming lukte niet. Kies de map opnieuw."; bron = "geen"; }
+  alles();
+}
+async function bestanden(files){
+  let regels = [];
+  for(const f of files) regels = regels.concat(leesLog(await f.text()));
+  if(!regels.length){ bronFout = "Geen tijdlog-regels gevonden in dit bestand."; alles(); return; }
+  bronFout = ""; await zetLog(regels); await laadOpgeslagen(); alles();
+}
+function renderBron(){
+  const A = $("bronActies"); A.innerHTML = "";
+  let st;
+  if(!S.voorbeeld){
+    const t = S.claude.reduce((a,b) => a + (b.e - b.s), 0);
+    st = S.claude.length ? "Geladen: " + S.claude.length + " blok" + (S.claude.length > 1 ? "ken" : "") + " met Claude, samen " + uurMin(t) + "." : "Geladen. Geen Claude-gebruik op deze dag.";
+  } else st = bron === "toestemming" ? "Eén klik nodig: geef dit scherm weer toestemming om je tijdlog-map te lezen." : "Nog niet gekoppeld.";
+  $("claudeStatus").textContent = st;
+  if(heeftMap && bron === "toestemming") A.appendChild(knop("Toestemming geven", geefToestemming, true));
+  else if(heeftMap && bron === "geen") A.appendChild(knop("Map P21-tijdlog kiezen (eenmalig)", kiesMap, true));
+  else if(heeftMap && bron === "klaar") A.appendChild(knop("Opnieuw laden", async () => { await laadUitMap(); await laadOpgeslagen(); alles(); }));
+  const l = document.createElement("label"); l.className = "knop"; l.htmlFor = "bestand"; l.textContent = "Bestand kiezen"; A.appendChild(l);
+  $("bronHulp").textContent = bronFout || (heeftMap ? "De map staat in je thuismap: P21-tijdlog. Je kiest hem één keer; daarna laadt dit scherm je dag zelf." : "Je browser kan de map niet zelf lezen. Kies het bestand van vandaag uit de map P21-tijdlog in je thuismap.");
+}
+
+/* ---------- totalen, opslaan, laden ---------- */
+function totalen(){
+  const cat = {};
+  const tel = b => { const k = b.soort || "Niet gekozen"; cat[k] = (cat[k]||0) + Math.max(0, Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)); };
+  S.claude.forEach(tel); S.rest.forEach(tel);
+  return {cat};
+}
 function renderStatus(){
-  $("claudeStatus").textContent = claudeStatusTekst();
   const k = $("opslaan");
   k.disabled = S.voorbeeld || !db || !uid;
   if(!db) $("opslaanStatus").textContent = "Opslaan kan alleen als je deze pagina in Claude opent.";
-  else if(S.voorbeeld) $("opslaanStatus").textContent = "Laad eerst je eigen gegevens.";
+  else if(S.voorbeeld) $("opslaanStatus").textContent = "Koppel eerst je tijdlog.";
   else if(S.dirty) $("opslaanStatus").textContent = "Niet opgeslagen wijzigingen";
 }
 async function opslaan(){
   if(!db || !uid || S.voorbeeld) return;
   const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
   const blokken = [];
-  S.agenda.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"agenda",soort:b.soort,naam:b.naam||""}));
-  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort,naam:"",map:""}));
-  S.zelf.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort,naam:b.naam||"",notitie:b.notitie||""}));
-  const open = gaten().reduce((t,g) => t + (g.e - g.s), 0);
+  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||""}));
+  S.rest.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort||""}));
   try{
     await db.doc("dagen/" + uid).set({laatst:S.datum});
-    await db.doc("dagen/" + uid + "/d/" + S.datum).set({datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, pauze:{van:fmt(S.pauze.s),tot:fmt(S.pauze.e)}, blokken, totalen:totalen(), open_minuten:open, opgeslagen:new Date().toISOString()});
+    await db.doc("dagen/" + uid + "/d/" + S.datum).set({datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, blokken, totalen:totalen(), opgeslagen:new Date().toISOString()});
     S.dirty = false;
     $("opslaanStatus").textContent = "Opgeslagen om " + new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   }catch(err){
@@ -567,24 +494,22 @@ async function laadOpgeslagen(){
   try{
     const snap = await db.doc("dagen/" + uid + "/d/" + S.datum).get();
     if(!snap.exists) return false;
-    const d = snap.data();
+    const d = snap.data(), bl = Array.isArray(d.blokken) ? d.blokken : [];
+    if(!bl.some(b => b.bron === "claude" || b.bron === "zelf")) return false;
     wegVoorbeeld();
     S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
-    if(d.pauze) S.pauze = {s:parseT(d.pauze.van), e:parseT(d.pauze.tot)};
-    const bl = Array.isArray(d.blokken) ? d.blokken : [];
-    S.agenda = bl.filter(b => b.bron === "agenda").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",titel:""}));
-    S.claude = bl.filter(b => b.bron === "claude").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",map:b.map||""}));
-    S.zelf = bl.filter(b => b.bron === "zelf").map(b => ({s:parseT(b.van),e:parseT(b.tot),soort:b.soort,naam:b.naam||"",notitie:b.notitie||""}));
-    S.dirty = false; S.sel = null;
     $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
+    const lees = b => ({s:parseT(b.van), e:parseT(b.tot), soort:goed(b.soort)});
+    S.claude = bl.filter(b => b.bron === "claude").map(b => Object.assign(lees(b), {map:""}));
+    S.rest = bl.filter(b => b.bron === "zelf").map(lees);
+    S.dirty = false; S.sel = null;
     $("opslaanStatus").textContent = "Deze dag is al opgeslagen. Wijzigingen? Klik opnieuw op Dag opslaan.";
     return true;
   }catch(_){ return false; }
 }
 async function wisselDag(dag){
-  S.datum = dag; $("datum").value = dag; S.sel = null; S.agendaGehaald = false;
-  if(!S.voorbeeld){ S.agenda = []; S.zelf = []; S.claude = blokkenVoor(dag); S.dirty = false; $("opslaanStatus").textContent = "Nog niet opgeslagen"; }
-  $("agendaStatus").textContent = "Nog niet opgehaald";
+  S.datum = dag; $("datum").value = dag; S.sel = null;
+  if(!S.voorbeeld){ S.claude = blokkenVoor(dag); S.rest = bouwRest([]); S.dirty = false; $("opslaanStatus").textContent = "Nog niet opgeslagen"; }
   await laadOpgeslagen();
   alles();
 }
@@ -597,28 +522,27 @@ async function laadTeam(){
     const rijen = [];
     for(const p of mensen.docs){
       const dagen = await db.collection("dagen/" + p.id + "/d").get();
-      const r = {id:p.id, dagen:0, Klantwerk:0, "Intern werk":0, Acquisitie:0, open:0};
-      dagen.docs.forEach(d => { const x = d.data(); r.dagen++; r.open += x.open_minuten || 0;
-        const t = x.totalen || {cat:{},naam:{}};
-        ["Klantwerk","Intern werk","Acquisitie"].forEach(k => r[k] += (t.cat && t.cat[k]) || 0);
-      });
+      const r = {id:p.id, dagen:0, "Klantwerk":0, "Intern werk":0, "Acquisitie":0};
+      dagen.docs.forEach(d => { const x = d.data(); r.dagen++; const t = x.totalen || {cat:{}}; CATS.forEach(k => r[k] += (t.cat && t.cat[k]) || 0); });
       rijen.push(r);
     }
     T.innerHTML = "";
     if(!rijen.length){ T.appendChild(tekst("p","Nog niemand heeft een dag opgeslagen.","leeg")); return; }
     const namen = user ? await user.profiles(rijen.map(r => r.id)) : {};
     const tb = document.createElement("table");
-    const kop = document.createElement("tr"); ["Persoon","Dagen","Klantwerk","Intern werk","Acquisitie","Open"].forEach(h => kop.appendChild(tekst("th",h)));
+    const kop = document.createElement("tr"); ["Persoon","Dagen"].concat(CATS).forEach(h => kop.appendChild(tekst("th",h)));
     const th = document.createElement("thead"); th.appendChild(kop); tb.appendChild(th);
     const body = document.createElement("tbody");
     rijen.forEach(r => { const tr = document.createElement("tr");
       tr.appendChild(tekst("td", (namen[r.id] && namen[r.id].name) || "Teamlid"));
       tr.appendChild(tekst("td", String(r.dagen), "mono"));
-      [r.Klantwerk,r["Intern werk"],r.Acquisitie,r.open].forEach(m => tr.appendChild(tekst("td", uurMin(m), "mono")));
+      CATS.forEach(k => tr.appendChild(tekst("td", uurMin(r[k]), "mono")));
       body.appendChild(tr); });
     tb.appendChild(body); T.appendChild(tb);
   }catch(_){ T.innerHTML = ""; T.appendChild(tekst("p","Laden lukte niet. Probeer het opnieuw.","leeg")); }
 }
+
+function alles(){ renderBron(); renderLijn(); renderPaneel(); renderStatus(); }
 
 /* ---------- start ---------- */
 $("datum").value = S.datum;
@@ -627,24 +551,26 @@ $("vorige").onclick = () => wisselDag(verschuif(S.datum,-1));
 $("volgende").onclick = () => wisselDag(verschuif(S.datum,1));
 $("vandaag").onclick = () => wisselDag(isoDag(new Date()));
 $("datum").onchange = e => { if(e.target.value) wisselDag(e.target.value); };
-$("werkS").onchange = e => { const v = parseT(e.target.value); if(v < S.werk.e){ S.werk.s = v; S.dirty = !S.voorbeeld; S.sel = null; alles(); } };
-$("werkE").onchange = e => { const v = parseT(e.target.value); if(v > S.werk.s){ S.werk.e = v; S.dirty = !S.voorbeeld; S.sel = null; alles(); } };
+const nieuweWerkdag = () => { S.rest = bouwRest(S.rest); S.dirty = !S.voorbeeld; S.sel = null; alles(); };
+$("werkS").onchange = e => { const v = parseT(e.target.value); if(v < S.werk.e){ S.werk.s = v; nieuweWerkdag(); } };
+$("werkE").onchange = e => { const v = parseT(e.target.value); if(v > S.werk.s){ S.werk.e = v; nieuweWerkdag(); } };
 $("bestand").onchange = e => { if(e.target.files.length) bestanden(e.target.files); e.target.value = ""; };
-document.addEventListener("dragover", e => e.preventDefault());
-document.addEventListener("drop", e => { e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files.length) bestanden(e.dataTransfer.files); });
-$("agendaKnop").onclick = haalAgenda;
 $("opslaan").onclick = opslaan;
 $("teamKnop").onclick = laadTeam;
 alles();
 
-if(window.claude && window.claude.use){
-  window.claude.use("mcp").then(m => { mcp = m; });
-  Promise.all([window.claude.use("db"), window.claude.use("user")]).then(async ([d,u]) => {
-    db = d; user = u;
-    if(u){ uid = await u.id(); if(await u.isOwner()) $("teamKaart").hidden = !db; }
-    if(db && uid) await laadOpgeslagen();
-    alles();
-  });
-}
+/* bij openen: alles zelf ophalen */
+(async function(){
+  await startMap();
+  if(window.claude && window.claude.use){
+    try{
+      const [d,u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      db = d; user = u;
+      if(u){ uid = await u.id(); if(await u.isOwner()) $("teamKaart").hidden = !db; }
+      if(db && uid) await laadOpgeslagen();
+    }catch(_){}
+  }
+  alles();
+})();
 })();
 </script>
