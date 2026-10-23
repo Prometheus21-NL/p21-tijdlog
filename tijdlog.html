@@ -211,8 +211,8 @@ input[type=file]{display:none}
 const PX = 1.15; // pixels per minuut
 const CATS = ["Klantwerk","Intern werk","Acquisitie"]; // Klantwerk = voor een klant, Intern werk = voor Prometheus21 zelf, Acquisitie = nieuwe klanten werven
 const CATS_REST = CATS.concat(["Pauze"]);
-const SOORTEN_AGENDA = ["Klantoverleg","Intern overleg","Eigen blok"];
-const catVan = b => b.soort === "Klantoverleg" ? "Klantwerk" : b.soort === "Intern overleg" ? "Intern werk" : b.soort;
+const SOORTEN_AGENDA = ["Klantoverleg","Intern overleg","Acquisitie-overleg","Eigen blok"];
+const catVan = b => b.soort === "Klantoverleg" ? "Klantwerk" : b.soort === "Intern overleg" ? "Intern werk" : b.soort === "Acquisitie-overleg" ? "Acquisitie" : b.soort;
 let onthoud = {}; // map -> {soort,naam}, alleen in deze browser
 let namen = [];
 try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; namen = JSON.parse(localStorage.getItem("p21namen") || "[]") || []; }catch(_){}
@@ -392,7 +392,7 @@ function renderPaneel(){
     const b = S.agenda[sel.i];
     st.appendChild(tekst("p", (b.titel ? b.titel + ", " : "") + fmt(b.s) + "–" + fmt(b.e) + ". Wat voor afspraak was dit?", ""));
     st.appendChild(chipRij(SOORTEN_AGENDA, b.soort, o => { b.soort = o; S.dirty = true; alles(); }));
-    st.appendChild(tekst("p","Klantoverleg telt als Klantwerk, Intern overleg als Intern werk. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
+    st.appendChild(tekst("p","Klantoverleg telt als Klantwerk, Intern overleg als Intern werk, Acquisitie-overleg als Acquisitie (bijvoorbeeld een kennismaking of offertegesprek met een nieuwe klant). Het scherm zet externe meetings zelf op Klantoverleg; pas het aan als het eigenlijk acquisitie was. \"Eigen blok\" is een blok dat je voor jezelf had gepland. Dat telt niet als gemeten tijd: vul daar zelf in wat je echt deed.","status"));
     if(b.soort !== "Eigen blok") st.appendChild(naamVeld(b, "agendaNaam"));
     const del = document.createElement("button"); del.type = "button"; del.className = "knop"; del.textContent = "Ging niet door, weghalen";
     del.onclick = () => { S.agenda.splice(sel.i,1); S.sel = null; S.dirty = true; alles(); }; st.appendChild(del);
