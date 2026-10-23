@@ -308,7 +308,7 @@ function renderLijn(){
   [bA,bC,bR].forEach(b => { b.className = "baan"; L.appendChild(b); });
 
   S.agenda.forEach((b,i) => { if(!zichtbaar(b)) return;
-    const cls = b.soort === "Klantoverleg" ? "klant" : b.soort === "Intern overleg" ? "intern" : "eigen";
+    const cls = b.soort === "Klantoverleg" || b.soort === "Acquisitie-overleg" ? "klant" : b.soort === "Intern overleg" ? "intern" : "eigen";
     const el = blokEl(cls, b, b.titel || b.soort, b.titel ? b.soort + " · " + fmt(b.s) + "–" + fmt(b.e) : null, S.sel && S.sel.t === "agenda" && S.sel.i === i);
     el.onclick = () => kies({t:"agenda",i}); bA.appendChild(el); });
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
