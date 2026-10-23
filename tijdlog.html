@@ -240,7 +240,7 @@ function knop(txt, fn){ const b = document.createElement("button"); b.type = "bu
 
 const S = {
   datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
-  claude:[{s:545,e:618,soort:"Klantwerk",map:"voorbeeld"},{s:785,e:872,soort:"Intern werk",map:"voorbeeld"},{s:930,e:975,soort:"Acquisitie",map:"voorbeeld"}],
+  claude:[{s:545,e:618,soort:"Klantwerk"},{s:785,e:872,soort:"Intern werk"},{s:930,e:975,soort:"Acquisitie"}],
   rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[]
 };
 let db = null;
@@ -350,8 +350,7 @@ function voegSamen(i){
 function kies(sel){ S.sel = (S.sel && S.sel.t === sel.t && S.sel.i === sel.i) ? null : sel; renderLijn(); renderPaneel(); }
 function zetSoort(sel, b, o){
   b.soort = o; S.dirty = true;
-  if(sel.t === "claude" && b.map && CATS.includes(o)){ onthoud[b.map] = {soort:o}; bewaar(); S.claude.forEach(x => { if(x.map === b.map && !x.soort) x.soort = o; }); }
-  alles();
+    alles();
 }
 function renderPaneel(){
   const box = $("paneelBox"), P = $("paneel"); P.innerHTML = "";
@@ -384,7 +383,7 @@ function renderPaneel(){
 function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
 function leesLog(txt){
   const out = [];
-  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,map:o.map||""}); }catch(_){} });
+  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e}); }catch(_){} });
   return out;
 }
 const minDag = x => x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
@@ -400,18 +399,17 @@ function blokkenVoor(dag){
       if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
       if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, mj); break; }
     }
-    iv.push({s:m, e:eind, map:x.map});
+    iv.push({s:m, e:eind});
   });
   const blokken = [];
   iv.forEach(x => {
     const l = blokken.length ? blokken[blokken.length-1] : null;
-    if(l && l.map === x.map && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); }
-    else blokken.push({s:x.s, e:x.e, map:x.map});
+    if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); }
+    else blokken.push({s:x.s, e:x.e});
   });
   blokken.sort((a,b) => a.s - b.s);
   blokken.forEach((b,i) => { const v = blokken[i+1]; if(v && b.e > v.s) b.e = Math.max(v.s, b.s + 5); });
-  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null, map:b.map}));
-  res.forEach(b => { const o = b.map && onthoud[b.map]; if(o && CATS.includes(o.soort)) b.soort = o.soort; });
+  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null}));
   return res;
 }
 function wegVoorbeeld(){
@@ -474,7 +472,7 @@ async function laadOpgeslagen(){
     S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
     $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
     const lees = b => ({s:parseT(b.van), e:parseT(b.tot), soort:goed(b.soort)});
-    S.claude = bl.filter(b => b.bron === "claude").map(b => Object.assign(lees(b), {map:""}));
+    S.claude = bl.filter(b => b.bron === "claude").map(b => lees(b));
     S.rest = bl.filter(b => b.bron === "zelf").map(lees);
     S.dirty = false; S.sel = null;
     $("opslaanStatus").textContent = "Deze dag is al opgeslagen. Wijzigingen? Klik opnieuw op Dag opslaan.";

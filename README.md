@@ -11,10 +11,10 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 |---|---|
 | tijdstip (bv. 10:14) | wat je typt |
 | wat er gebeurde: sessie gestart, vraag gesteld, Claude klaar, sessie dicht | wat Claude antwoordt |
-| de naam van de map waarin je werkt | inhoud van bestanden, mails of documenten |
+| (verder niets: geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
-In het invulscherm kies je zelf per map: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Het scherm onthoudt je keuze per map. Je agenda wordt niet gelezen.
+In het invulscherm kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
 
 ## Installeren (1 regel)
 

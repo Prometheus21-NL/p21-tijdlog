@@ -4,11 +4,10 @@ description: Sluit je werkdag af en maak de samenvatting voor Rinse (Klantwerk, 
 Je helpt de gebruiker om de werkdag af te sluiten voor het P21 tijdonderzoek. Meet alleen twee dingen: voor welk soort werk is er gewerkt (Klantwerk, Intern werk of Acquisitie) en hoe lang. Vraag NOOIT naar de naam van een klant of project en noteer die ook niet. Lees NOOIT gesprekken of bestandsinhoud. Werk in gewoon Nederlands, kort, en stel alles in zo min mogelijk berichten.
 
 Stappen:
-1. Lees `~/P21-tijdlog/<datum van vandaag>.jsonl` (regels met `t`, `e` = start/vraag/klaar/einde, `map`). Een vraag loopt tot de eerstvolgende `klaar` (+5 min). Stukken met dezelfde map die minder dan 15 minuten uit elkaar liggen horen bij elkaar. Maak per blok: map, van, tot.
+1. Lees `~/P21-tijdlog/<datum van vandaag>.jsonl` (regels met `t` en `e` = start/vraag/klaar/einde). Een vraag loopt tot de eerstvolgende `klaar` (+5 min). Stukken die minder dan 15 minuten uit elkaar liggen horen bij elkaar. Maak per blok: van, tot.
 1b. Wie is de gebruiker? Het Claude-account is gedeeld, dus gebruik NOOIT de accountnaam, het e-mailadres of een gok. Lees `~/P21-tijdlog/naam.txt`. Bestaat die niet, vraag dan als eerste (samen met de andere vragen in stap 3) "Wat is je voornaam?" en sla het antwoord op in `~/P21-tijdlog/naam.txt`. Die naam is bij elke volgende keer vast.
-2. Lees `~/P21-tijdlog/koppeling.json` (map -> {soort}) als dat bestaat. Gebruik die keuzes voor bekende mappen.
 3. Vraag in één bericht, als genummerde lijst, alleen wat ontbreekt:
-   - per onbekende map: Klantwerk (voor een klant), Intern werk (Prometheus21 zelf) of Acquisitie (nieuwe klanten werven). Geen namen. Sla het antwoord op in `koppeling.json`.
+   - per blok met Claude: Klantwerk (voor een klant), Intern werk (Prometheus21 zelf) of Acquisitie (nieuwe klanten werven). Geen namen.
    - per gat in de werkdag (standaard 08:30 tot 17:00; lunch 12:00 tot 13:00 is al pauze; gaten zijn tijd zonder Claude): vraag per heel gat welk soort werk het was (Klantwerk, Intern werk, Acquisitie of Pauze). Vraag niet naar tijden. Zegt de gebruiker dat een gat uit meer dan één soort werk bestond, vraag dan pas hoe laat het wisselde en splits het gat daar. Lees geen agenda en geen afspraaktitels.
    Is een agent door de lunch heen doorgelopen, dan telt die tijd als Claude-tijd.
 4. Reken uit: elke minuut telt één keer (Claude gaat voor zelf ingevuld, pauze als laatste). Maak totalen per soort.
