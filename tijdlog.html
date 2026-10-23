@@ -467,7 +467,7 @@ function renderPaneel(){
 function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
 function leesLog(txt){
   const out = [];
-  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,s:o.s||""}); }catch(_){} });
+  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,s:o.s||"",v:o.v||""}); }catch(_){} });
   return out;
 }
 const minDag = x => x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
@@ -497,12 +497,13 @@ function blokkenVoor(dag){
       const l = blokken.length ? blokken[blokken.length-1] : null;
       if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); } else blokken.push({s:x.s, e:x.e});
     });
-    if(blokken.length) sessies.push(blokken);
+    const gekozen = ev.filter(x => x.e === "soort").pop();
+    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie"})[gekozen.v] || null : null}));
   });
   /* tabnummers op volgorde van eerste gebruik; elke tab houdt zijn eigen blokken, ook als ze tegelijk lopen */
   sessies.sort((a,b) => a[0].s - b[0].s);
   const res = [];
-  sessies.forEach((blokken,k) => blokken.forEach(b => res.push({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null, tab:k+1})));
+  sessies.forEach((blokken,k) => blokken.forEach(b => res.push({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:blokken.soort, tab:k+1})));
   return res.sort((a,b) => a.s - b.s);
 }
 function wegVoorbeeld(){

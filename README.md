@@ -11,10 +11,11 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 |---|---|
 | tijdstip (bv. 10:14) | wat je typt |
 | wat er gebeurde: sessie gestart, vraag gesteld, Claude klaar, sessie dicht | wat Claude antwoordt |
+| je antwoord op de beginvraag: klant, intern of acquisitie (alleen die drie woorden) | |
 | een willekeurig sessienummer per tab (geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
-In het invulscherm kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
+Bij de eerste vraag van elke chat vraagt Claude waarvoor de chat is. Dat antwoord vult het invulscherm vooraf in. In het invulscherm kun je het altijd aanpassen en kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
 
 ## Installeren (1 regel)
 

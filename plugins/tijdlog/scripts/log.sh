@@ -30,6 +30,15 @@ mkdir -p "$dir" 2>/dev/null || exit 0
 t=$(date +%Y-%m-%dT%H:%M:%S%z)
 printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$(date +%Y-%m-%d).jsonl" 2>/dev/null
 
+# Eerste vraag van een chat: Claude vraagt waarvoor de chat is (één keer per sessie).
+# Het antwoord wordt via soort.sh vastgelegd; alleen klant, intern of acquisitie.
+if [ "$e" = vraag ] && [ -n "$sid" ] && [ ! -f "$dir/gevraagd-$sid" ]; then
+  : > "$dir/gevraagd-$sid" 2>/dev/null
+  soort="$(cd "$(dirname "$0")" && pwd)/soort.sh"
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen. Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets."}}' "$soort" "$sid"
+  exit 0
+fi
+
 # Herinnering om 16:45: één keer per dag, alleen als de dag nog niet is afgesloten.
 # Het scherm krijgt een melding en Claude krijgt de opdracht om dit te noemen. Er wordt niets gelezen.
 dag=$(date +%Y-%m-%d)
