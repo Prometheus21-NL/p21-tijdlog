@@ -3,8 +3,11 @@
 # Schrijft per moment één regel naar ~/P21-tijdlog/<datum>.jsonl met ALLEEN:
 #   - het tijdstip
 #   - wat er gebeurde (sessie start, vraag gesteld, Claude klaar, sessie dicht)
+#   - het sessienummer van Claude Code (een willekeurig id), zodat meerdere tabs
+#     door elkaar kunnen lopen en elke minuut toch maar één keer telt
 # Wat je typt wordt nooit gelezen en er wordt geen mapnaam bewaard: de invoer
-# wordt alleen gebruikt voor het soort moment. Het bestand blijft op je computer.
+# wordt alleen gebruikt voor het soort moment en het sessienummer. Het bestand
+# blijft op je computer.
 # Pauzeren: maak een bestand ~/P21-tijdlog/PAUZE aan (of gebruik /tijdlog:pauze).
 
 dir="$HOME/P21-tijdlog"
@@ -21,9 +24,11 @@ case "$event" in
   *) exit 0 ;;
 esac
 
+sid=$(printf '%s' "$input" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1 | tr -cd 'A-Za-z0-9-' | cut -c 1-40)
+
 mkdir -p "$dir" 2>/dev/null || exit 0
 t=$(date +%Y-%m-%dT%H:%M:%S%z)
-printf '{"t":"%s","e":"%s"}\n' "$t" "$e" >> "$dir/$(date +%Y-%m-%d).jsonl" 2>/dev/null
+printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$(date +%Y-%m-%d).jsonl" 2>/dev/null
 
 # Herinnering om 16:45: één keer per dag, alleen als de dag nog niet is afgesloten.
 # Het scherm krijgt een melding en Claude krijgt de opdracht om dit te noemen. Er wordt niets gelezen.

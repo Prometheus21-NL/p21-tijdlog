@@ -383,34 +383,37 @@ function renderPaneel(){
 function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
 function leesLog(txt){
   const out = [];
-  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e}); }catch(_){} });
+  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,s:o.s||""}); }catch(_){} });
   return out;
 }
 const minDag = x => x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
 /* een vraag loopt tot de eerstvolgende "klaar"; stukken met dezelfde map die minder dan 15 min uit elkaar liggen horen bij elkaar */
 function blokkenVoor(dag){
-  const ev = S.logRegels.filter(x => isoDag(x.d) === dag).sort((a,b) => a.d - b.d);
+  const alle = S.logRegels.filter(x => isoDag(x.d) === dag).sort((a,b) => a.d - b.d);
+  const perSessie = {};
+  alle.forEach(x => { (perSessie[x.s] = perSessie[x.s] || []).push(x); });
   const iv = [];
-  ev.forEach((x,i) => {
+  /* per sessie (tab): een vraag loopt tot de eerstvolgende "klaar" van dezelfde sessie, +5 min.
+     Zonder "klaar" (bv. afgebroken) tellen we hooguit 45 min. Tabs die open staan zonder vraag tellen niet mee. */
+  Object.values(perSessie).forEach(ev => ev.forEach((x,i) => {
     if(x.e !== "vraag") return;
     const m = minDag(x); let eind = m + 5;
     for(let j = i+1; j < ev.length; j++){
       const mj = minDag(ev[j]);
       if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
-      if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, mj); break; }
+      if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, Math.min(mj, m + 45)); break; }
     }
     iv.push({s:m, e:eind});
-  });
+  }));
+  /* tabs door elkaar: overlappende stukken worden één blok, dus elke minuut telt één keer */
+  iv.sort((a,b) => a.s - b.s);
   const blokken = [];
   iv.forEach(x => {
     const l = blokken.length ? blokken[blokken.length-1] : null;
     if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); }
     else blokken.push({s:x.s, e:x.e});
   });
-  blokken.sort((a,b) => a.s - b.s);
-  blokken.forEach((b,i) => { const v = blokken[i+1]; if(v && b.e > v.s) b.e = Math.max(v.s, b.s + 5); });
-  const res = blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null}));
-  return res;
+  return blokken.map(b => ({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:null}));
 }
 function wegVoorbeeld(){
   if(!S.voorbeeld) return;

@@ -11,7 +11,7 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 |---|---|
 | tijdstip (bv. 10:14) | wat je typt |
 | wat er gebeurde: sessie gestart, vraag gesteld, Claude klaar, sessie dicht | wat Claude antwoordt |
-| (verder niets: geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
+| een willekeurig sessienummer per tab (geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
 In het invulscherm kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
@@ -25,6 +25,10 @@ claude plugin marketplace add https://github.com/Prometheus21-NL/p21-tijdlog.git
 ```
 
 Start Claude Code daarna opnieuw (VS Code: Claude-paneel sluiten en openen).
+
+## Meerdere tabs en tabs die open blijven staan
+
+Een open tab telt niet mee. Er wordt alleen tijd geteld van het moment dat je een vraag stelt tot Claude klaar is (plus 5 minuten). Een tab die klaar is en open blijft staan kost dus geen tijd. Werk je in meerdere tabs tegelijk, dan worden die door elkaar gelegd en telt elke minuut één keer. Het logbestand bewaart daarvoor per regel een willekeurig sessienummer, geen inhoud.
 
 ## Wie ben jij? (gedeeld Claude-account)
 
