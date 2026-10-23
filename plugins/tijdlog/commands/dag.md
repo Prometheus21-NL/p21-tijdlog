@@ -5,6 +5,7 @@ Je helpt de gebruiker om de werkdag af te sluiten voor het P21 tijdonderzoek. Me
 
 Stappen:
 1. Lees `~/P21-tijdlog/<datum van vandaag>.jsonl` (regels met `t`, `e` = start/vraag/klaar/einde, `map`). Een vraag loopt tot de eerstvolgende `klaar` (+5 min). Stukken met dezelfde map die minder dan 15 minuten uit elkaar liggen horen bij elkaar. Maak per blok: map, van, tot.
+1b. Wie is de gebruiker? Het Claude-account is gedeeld, dus gebruik NOOIT de accountnaam, het e-mailadres of een gok. Lees `~/P21-tijdlog/naam.txt`. Bestaat die niet, vraag dan als eerste (samen met de andere vragen in stap 3) "Wat is je voornaam?" en sla het antwoord op in `~/P21-tijdlog/naam.txt`. Die naam is bij elke volgende keer vast.
 2. Lees `~/P21-tijdlog/koppeling.json` (map -> {soort, naam}) als dat bestaat. Gebruik die keuzes voor bekende mappen.
 3. Vraag in één bericht, als genummerde lijst, alleen wat ontbreekt:
    - per onbekende map: Klant, Bedrijf (Prometheus21 zelf) of Project, en de naam (bv. RLG, Anti-AI-slop). Sla het antwoord op in `koppeling.json`.
@@ -14,7 +15,7 @@ Stappen:
 5. Schrijf `~/P21-tijdlog/samenvatting-<datum>.txt` en toon precies dit blok, zodat de gebruiker het kan kopiëren:
 
 ```
-P21 tijdlog <datum> <naam gebruiker>
+P21 tijdlog <datum> <inhoud van naam.txt>
 Klant: <u m>
 Bedrijf: <u m>
 Project: <u m>

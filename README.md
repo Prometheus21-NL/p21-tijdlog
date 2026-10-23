@@ -26,6 +26,11 @@ claude plugin marketplace add https://github.com/Prometheus21-NL/p21-tijdlog.git
 
 Start Claude Code daarna opnieuw (VS Code: Claude-paneel sluiten en openen).
 
+## Wie ben jij? (gedeeld Claude-account)
+
+Jullie delen één Claude-account, dus Claude kan jullie daar niet aan herkennen. De tijdlog staat op **jouw eigen computer** (`~/P21-tijdlog`), dus elke computer heeft zijn eigen log. De eerste keer dat je `/tijdlog:dag` typt, vraagt Claude om je voornaam en bewaart die op je computer (`~/P21-tijdlog/naam.txt`). Die naam staat daarna boven elk blok dat je naar Rinse mailt. Verkeerde naam? Pas dat bestand aan.
+Werk je met meerdere mensen op dezelfde computer en dezelfde inlog van het besturingssysteem? Dan loopt alles door elkaar; geef elk een eigen gebruiker op die computer.
+
 ## Aan het eind van de dag (2 minuten)
 
 Om 16:45 krijg je een melding op je scherm en Claude herinnert je er in je volgende gesprek aan (één keer per dag, en alleen als je de dag nog niet hebt afgesloten). Typ in Claude Code: `/tijdlog:dag`. Beantwoord de lijst met vragen en mail het blok dat je terugkrijgt naar Rinse.
