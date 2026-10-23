@@ -32,6 +32,8 @@ Een open tab telt niet mee. Er wordt alleen tijd geteld van het moment dat je ee
 
 Werk je in meerdere tabs tegelijk, dan krijgt elke tab zijn eigen blok (tab 1, tab 2, ...) en kies je per tab wat het was. Twee tabs naast elkaar mogen dus Klantwerk en Intern werk zijn. Lopen er op hetzelfde moment meerdere tabs, dan wordt die minuut gelijk over de tabs verdeeld, zodat je totaal gelijk blijft aan je echte werktijd. Het logbestand bewaart daarvoor per regel een willekeurig sessienummer, geen inhoud.
 
+Staat een blok te lang, bijvoorbeeld omdat Claude op jouw antwoord wachtte terwijl je weg was? Sleep in het invulscherm de boven- of onderkant van het blok naar de goede tijd, of pas de tijd aan in het paneel. De tijd die vrijkomt, vul je daarna zelf in.
+
 ## Wie ben jij? (gedeeld Claude-account)
 
 Jullie delen één Claude-account, dus Claude kan jullie daar niet aan herkennen. De tijdlog staat op **jouw eigen computer** (`~/P21-tijdlog`), dus elke computer heeft zijn eigen log. De eerste keer dat je `/tijdlog:dag` typt, vraagt Claude om je voornaam en bewaart die op je computer (`~/P21-tijdlog/naam.txt`). Die naam staat daarna boven elk blok dat je naar Rinse mailt. Verkeerde naam? Pas dat bestand aan.

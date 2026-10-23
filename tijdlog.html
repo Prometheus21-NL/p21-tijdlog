@@ -152,6 +152,13 @@ input[type=file]{display:none}
 .blok.c-acq{background:var(--acq);color:var(--acq-ink);border-color:var(--acq-line)}
 .blok.leeg{background:transparent;color:var(--claude);border:1.5px dashed var(--claude)}
 .blok{transition:background-color .15s,color .15s}
+.rand{position:absolute;left:0;right:0;height:10px;cursor:ns-resize;touch-action:none;opacity:0;z-index:2}
+.rand.boven{top:0}.rand.onder{bottom:0}
+.rand::after{content:"";position:absolute;left:50%;top:3px;width:34px;height:4px;margin-left:-17px;border-radius:2px;background:currentColor;opacity:.75}
+.blok:hover .rand,.blok.actief .rand{opacity:1}
+.paneel .tijden{display:flex;gap:10px;margin:0 0 12px}
+.paneel .tijden label{display:flex;flex-direction:column;gap:3px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.paneel .tijden input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 7px;font-family:var(--font-mono);font-size:13px;color:var(--ink)}
 .opslaanrij{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 @media (max-width:640px){
   .lijnwrap{grid-template-columns:minmax(0,1fr)}
@@ -266,6 +273,57 @@ function bouwRest(oud){
   res.forEach(r => { const o = oud.find(x => r.s >= x.s && r.s < x.e); r.soort = o && o.soort ? o.soort : (r.lunch ? "Pauze" : null); delete r.lunch; });
   return res;
 }
+/* Claude-blokken zijn te verschuiven: de vrije stukken daaromheen passen zich aan en houden hun keuze en splitsingen */
+function herbouwRest(){
+  const n = Math.max(0, S.werk.e - S.werk.s), vrij = new Array(n).fill(true);
+  S.claude.forEach(b => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++) vrij[m - S.werk.s] = false; });
+  const isVrij = m => m >= S.werk.s && m < S.werk.e && vrij[m - S.werk.s];
+  const res = [];
+  S.rest.slice().sort((a,b) => a.s - b.s).forEach(o => {
+    let a = null;
+    for(let m = o.s; m <= o.e; m++){
+      const v = m < o.e && isVrij(m);
+      if(v && a === null) a = m;
+      if(!v && a !== null){ if(m - a >= MIN) res.push({s:a, e:m, soort:o.soort}); a = null; }
+    }
+  });
+  const gedekt = new Array(n).fill(false);
+  res.forEach(r => { for(let m = r.s; m < r.e; m++) if(m >= S.werk.s && m < S.werk.e) gedekt[m - S.werk.s] = true; });
+  let a = null;
+  const sluit = end => {
+    if(a === null) return;
+    const bs = S.werk.s + a, be = S.werk.s + end;
+    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    for(let i = 0; i < p.length-1; i++){
+      const st = p[i], e = p[i+1], lunch = st >= S.lunch.s && e <= S.lunch.e;
+      if(e - st >= (lunch ? MIN : 10)) res.push({s:st, e, soort: lunch ? "Pauze" : null});
+    }
+    a = null;
+  };
+  for(let i = 0; i < n; i++){ if(vrij[i] && !gedekt[i]){ if(a === null) a = i; } else sluit(i); }
+  sluit(n);
+  res.sort((x,y) => x.s - y.s);
+  S.rest = res.reduce((l,x) => { const v = l[l.length-1]; if(v && v.e === x.s && v.soort === "Pauze" && x.soort === "Pauze") v.e = x.e; else l.push(x); return l; }, []);
+}
+function zetClaudeTijd(i, s, e){
+  const b = S.claude[i]; if(!b) return;
+  b.s = Math.max(S.werk.s, Math.min(s, e - MIN)); b.e = Math.min(S.werk.e, Math.max(e, b.s + MIN));
+  S.dirty = true; herbouwRest();
+}
+function startResize(e, i, kant){
+  e.preventDefault(); e.stopPropagation();
+  S.sel = {t:"claude", i};
+  const b = S.claude[i];
+  const beweeg = ev => {
+    const y = ev.clientY - $("lijn").getBoundingClientRect().top;
+    const m = Math.round((S.werk.s + y / PX) / MIN) * MIN;
+    if(kant === "boven") zetClaudeTijd(i, m, b.e); else zetClaudeTijd(i, b.s, m);
+    renderLijn(); renderPaneel();
+  };
+  const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderLijn(); renderPaneel(); renderStatus(); };
+  window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  renderLijn(); renderPaneel();
+}
 S.rest = bouwRest([]);
 const zichtbaar = b => b.e > S.werk.s && b.s < S.werk.e;
 
@@ -310,6 +368,7 @@ function renderLijn(){
   S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
     const tab = b.tab ? "tab " + b.tab : "Claude";
     const el = b.soort ? blokEl("c-" + KLEUR[b.soort], b, b.soort, tab + " · " + tijd(b), isSel("claude",i), rijen[i]) : blokEl("leeg", b, (b.tab ? "Tab " + b.tab : "Claude") + " · kies soort werk", tijd(b), isSel("claude",i), rijen[i]);
+    ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
@@ -379,6 +438,13 @@ function renderPaneel(){
   box.hidden = false;
   P.appendChild(tekst("h3", "Wat deed je hier?"));
   P.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + " · " + uurMin(b.e - b.s) + (sel.t === "claude" ? " · met Claude" + (b.tab ? ", tab " + b.tab : "") : ""), "tijd mono"));
+  if(sel.t === "claude"){
+    const t = document.createElement("div"); t.className = "tijden";
+    const veld = (lab, waarde, fn) => { const l = document.createElement("label"); l.textContent = lab; const inp = document.createElement("input"); inp.type = "time"; inp.step = 300; inp.value = fmt(waarde); inp.onchange = () => { if(inp.value){ fn(parseT(inp.value)); alles(); } }; l.appendChild(inp); return l; };
+    t.append(veld("Van", b.s, v => zetClaudeTijd(sel.i, v, b.e)), veld("Tot", b.e, v => zetClaudeTijd(sel.i, b.s, v)));
+    P.appendChild(t);
+    P.appendChild(tekst("p","Staat dit te lang? Sleep de onderkant van het blok omhoog of pas de tijd aan.","hulp")).style.margin = "0 0 12px";
+  }
   const k = document.createElement("div"); k.className = "keuzes";
   (sel.t === "claude" ? CATS : CATS_REST).forEach(o => {
     const c = document.createElement("button"); c.type = "button"; c.className = "keuze"; c.setAttribute("aria-pressed", String(o === b.soort));
