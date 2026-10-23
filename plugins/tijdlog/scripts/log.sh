@@ -8,12 +8,22 @@
 # Wat je typt wordt nooit gelezen en er wordt geen mapnaam bewaard: de invoer
 # wordt alleen gebruikt voor het soort moment en het sessienummer. Het bestand
 # blijft op je computer.
+# Chat uitsluiten: leg een leeg bestand .geen-tijdlog in de map (zie README).
 # Pauzeren: maak een bestand ~/P21-tijdlog/PAUZE aan (of gebruik /tijdlog:pauze).
 
 dir="$HOME/P21-tijdlog"
 [ -f "$dir/PAUZE" ] && exit 0
 
 input=$(cat)
+
+# Uitzondering voor wie geen werknemer is: staat er een leeg bestand .geen-tijdlog in de map
+# van de chat (of een map erboven), dan wordt voor die chat niets genoteerd. De map zelf wordt
+# alleen gecontroleerd en nergens bewaard.
+d=$(printf '%s' "$input" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "." ]; do
+  [ -f "$d/.geen-tijdlog" ] && exit 0
+  d=$(dirname "$d")
+done
 
 event=$(printf '%s' "$input" | sed -n 's/.*"hook_event_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
 case "$event" in

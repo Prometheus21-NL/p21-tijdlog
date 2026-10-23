@@ -53,6 +53,10 @@ Om 16:45 krijg je een melding op je scherm en Claude herinnert je er in je volge
 | `/tijdlog:pauze` | even niets bijhouden |
 | `/tijdlog:hervat` | weer bijhouden |
 
+## Een chat of map uitsluiten (alleen voor wie geen werknemer is)
+
+Hoort bepaald werk niet in de tijdlog thuis, bijvoorbeeld schoolwerk van een stagiair? Leg dan een leeg bestand met de naam `.geen-tijdlog` in de map waarin je die chats opent (`touch .geen-tijdlog`). Chats in die map, of een map eronder, worden dan niet bijgehouden en Claude stelt er ook de beginvraag niet. De plugin kijkt alleen of het bestand bestaat; de map wordt nergens bewaard. Verwijder het bestand om weer mee te tellen. Wie dit niet aanmaakt, merkt er niets van.
+
 ## Verwijderen
 
 ```
