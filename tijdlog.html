@@ -137,7 +137,7 @@ input[type=file]{display:none}
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
       <li><b>Wel:</b> van hoe laat tot hoe laat je werkte, voor welk soort werk (Klantwerk, Intern werk of Acquisitie). Namen van klanten of projecten worden niet gevraagd. Bij een gat in je dag eventueel één zin die je zelf typt.</li>
-      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt (de tijdlog leest dat nooit), wat er in een document of mail staat, of de titel van je afspraken. Agendatitels zie alleen jij op dit scherm; ze worden niet opgeslagen.</li>
+      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt (de tijdlog leest dat nooit), wat er in een document of mail staat, of de titel van je afspraken. Het scherm leest de titel alleen op jouw computer om een voorstel te doen (bijvoorbeeld Acquisitie bij 'offerte' of 'kennismaking'). Titels worden niet opgeslagen en niet verstuurd; jij kunt elk voorstel aanpassen.</li>
       <li>De Claude-tijdlog staat op je eigen computer (map <span class="mono">P21-tijdlog</span> in je thuismap). Pas als jij hier op Opslaan klikt, gaat de dag naar Rinse.</li>
       <li>Alleen Rinse ziet de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
       <li>Liever even niet? Typ <span class="mono">/tijdlog:pauze</span> in Claude Code.</li>
@@ -509,7 +509,8 @@ async function haalAgenda(){
       const a = new Date(e.start.dateTime), b = new Date(e.end.dateTime);
       if(isoDag(a) !== S.datum) return;
       const anderen = (e.attendees||[]).filter(x => !x.self && !x.resource);
-      const soort = !anderen.length ? "Eigen blok" : anderen.some(x => !/@prometheus21\.nl$/i.test(x.email||"")) ? "Klantoverleg" : "Intern overleg";
+      const acq = /offerte|kennismaking|intake|pitch|demo|prospect|lead|acquisitie|sales|introgesprek|verkoop/i.test(e.summary||"");
+      const soort = !anderen.length ? "Eigen blok" : anderen.some(x => !/@prometheus21\.nl$/i.test(x.email||"")) ? (acq ? "Acquisitie-overleg" : "Klantoverleg") : "Intern overleg";
       lijst.push({s:a.getHours()*60+a.getMinutes(), e:b.getHours()*60+b.getMinutes() || 1440, soort, naam:"", titel:e.summary||""});
     });
     wegVoorbeeld();
