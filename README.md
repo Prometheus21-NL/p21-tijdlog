@@ -42,13 +42,19 @@ Werk je met meerdere mensen op dezelfde computer en dezelfde inlog van het bestu
 
 ## Aan het eind van de dag (2 minuten)
 
-Om 16:45 krijg je een melding op je scherm en Claude herinnert je er in je volgende gesprek aan (één keer per dag, en alleen als je de dag nog niet hebt afgesloten). Typ in Claude Code: `/tijdlog:dag`. Beantwoord de lijst met vragen en mail het blok dat je terugkrijgt naar Rinse.
+Om 16:45 krijg je op een Mac een melding op je scherm. Op elk systeem herinnert Claude je er in je volgende gesprek aan (één keer per dag, en alleen als je de dag nog niet hebt afgesloten). Typ in Claude Code: `/tijdlog:dag`. Claude laat dan de link naar het invulscherm zien en zegt wat je moet doen:
+
+1. Open het [invulscherm](https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j).
+2. Klik op Tijdlog laden en kies het bestand van vandaag uit de map `P21-tijdlog` in je thuismap. Vul je voornaam in.
+3. Kies bij de gestippelde blokken wat voor werk het was en klik op Dag opslaan.
+
+Liever in de chat? Zeg dat tegen Claude, dan stelt hij de vragen en krijg je een blokje dat je naar Rinse mailt.
 
 ## Handige opdrachten
 
 | Opdracht | Wat het doet |
 |---|---|
-| `/tijdlog:dag` | sluit je dag af en maakt de samenvatting voor Rinse |
+| `/tijdlog:dag` | laat het invulscherm zien en wat je moet doen (of vult in de chat in) |
 | `/tijdlog:vandaag` | laat zien wat er vandaag genoteerd is |
 | `/tijdlog:pauze` | even niets bijhouden |
 | `/tijdlog:hervat` | weer bijhouden |

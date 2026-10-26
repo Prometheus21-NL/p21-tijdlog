@@ -1,6 +1,16 @@
 ---
-description: Sluit je werkdag af en maak de samenvatting voor Rinse (Klantwerk, Intern werk, Acquisitie + duur)
+description: Sluit je werkdag af: open het invulscherm en kies per blok Klantwerk, Intern werk of Acquisitie
 ---
+Standaard vult de gebruiker de dag in via het invulscherm. Zeg dit, in gewoon Nederlands en kort, en stop daarna (doe de stappen hieronder alleen als de gebruiker uitdrukkelijk liever in de chat invult):
+
+1. Open dit scherm: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j
+2. Klik op "Tijdlog laden" en kies het bestand van vandaag in de map P21-tijdlog in je thuismap (het heet `JJJJ-MM-DD.jsonl`, met de datum van vandaag). Vul bovenin je voornaam in.
+3. Klik op de blokken die nog gestippeld zijn en kies Klantwerk, Intern werk, Acquisitie of Pauze. Klik daarna op "Dag opslaan".
+
+Wil de gebruiker het in de chat doen, ga dan verder met de stappen hieronder.
+
+---
+
 Je helpt de gebruiker om de werkdag af te sluiten voor het P21 tijdonderzoek. Meet alleen twee dingen: voor welk soort werk is er gewerkt (Klantwerk, Intern werk of Acquisitie) en hoe lang. Vraag NOOIT naar de naam van een klant of project en noteer die ook niet. Lees NOOIT gesprekken of bestandsinhoud. Werk in gewoon Nederlands, kort, en stel alles in zo min mogelijk berichten.
 
 Stappen:

@@ -324,6 +324,45 @@ function startResize(e, i, kant){
   window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
   renderLijn(); renderPaneel();
 }
+/* Randen van een invulblok zijn te slepen. Claude-blokken blijven altijd staan.
+   Naast een ander invulblok schuift de splitslijn. Aan een vrije rand (naast Claude-tijd of het eind van de werkdag)
+   wordt het blok kleiner en ontstaat er een leeg blok voor de rest. Sleep je terug, dan verdwijnt dat lege blok weer. */
+function heeftBuur(i, kant){
+  const b = S.rest[i], n = S.rest[kant === "onder" ? i+1 : i-1];
+  return !!n && (kant === "onder" ? n.s === b.e : n.e === b.s);
+}
+function startRestResize(e, i, kant){
+  e.preventDefault(); e.stopPropagation();
+  const b = S.rest[i]; if(!b) return;
+  const buur = heeftBuur(i, kant);
+  const j = kant === "onder" ? i : i-1;
+  const orig = kant === "onder" ? b.e : b.s;
+  let rest = null;
+  S.sel = {t:"rest", i};
+  const wijs = () => { const k = S.rest.indexOf(b); S.sel = k >= 0 ? {t:"rest", i:k} : null; };
+  const beweeg = ev => {
+    const y = ev.clientY - $("lijn").getBoundingClientRect().top;
+    let m = Math.round((S.werk.s + y / PX) / MIN) * MIN;
+    if(buur){ zetSplit(j, m); return; }
+    if(kant === "onder"){
+      m = Math.max(b.s + MIN, Math.min(orig, m)); if(orig - m < MIN) m = orig;
+      b.e = m;
+      if(m === orig){ if(rest){ S.rest.splice(S.rest.indexOf(rest), 1); rest = null; } }
+      else if(!rest){ rest = {s:m, e:orig, soort:null}; S.rest.splice(S.rest.indexOf(b)+1, 0, rest); }
+      else rest.s = m;
+    } else {
+      m = Math.min(b.e - MIN, Math.max(orig, m)); if(m - orig < MIN) m = orig;
+      b.s = m;
+      if(m === orig){ if(rest){ S.rest.splice(S.rest.indexOf(rest), 1); rest = null; } }
+      else if(!rest){ rest = {s:orig, e:m, soort:null}; S.rest.splice(S.rest.indexOf(b), 0, rest); }
+      else rest.e = m;
+    }
+    S.dirty = true; wijs(); renderLijn(); renderPaneel();
+  };
+  const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderLijn(); renderPaneel(); renderStatus(); };
+  window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  renderLijn(); renderPaneel();
+}
 S.rest = bouwRest([]);
 const zichtbaar = b => b.e > S.werk.s && b.s < S.werk.e;
 
@@ -373,6 +412,7 @@ function renderLijn(){
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
     const el = blokEl(cls, b, b.soort || "Wat deed je hier?", tijd(b), isSel("rest",i));
+    ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startRestResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
     el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
   S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
   $("dagTitel").textContent = new Date(S.datum + "T12:00:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"});
@@ -459,7 +499,7 @@ function renderPaneel(){
   }
   acties.appendChild(knop("Klaar", () => { S.sel = null; alles(); }));
   P.appendChild(acties);
-  if(sel.t === "rest") P.appendChild(tekst("p","Deed je hier meer dan één ding? Splits het blok en sleep de zwarte lijn naar de goede plek.","hulp"));
+  if(sel.t === "rest") P.appendChild(tekst("p","Sleep de boven- of onderkant van het blok om de tijd aan te passen. Deed je hier meer dan één ding? Splits het blok en sleep de zwarte lijn naar de goede plek.","hulp"));
   plaatsPaneel();
 }
 

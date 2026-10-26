@@ -1,6 +1,6 @@
 {
   "name": "tijdlog",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Houdt bij hoe lang je met Claude Code werkt en in welke map. Nooit wat je typt. Voor het stage-onderzoek van Rinse (okt-nov 2026).",
   "author": {
     "name": "Rinse Nieboer, Prometheus21"
