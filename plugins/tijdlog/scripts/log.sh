@@ -14,19 +14,29 @@
 dir="$HOME/P21-tijdlog"
 [ -f "$dir/PAUZE" ] && exit 0
 
-input=$(cat)
+# Alleen ingebouwde shell-functies, geen sed/head/tr/cut/dirname. Elk los programma kost op
+# Windows (Git Bash) en op trage laptops tijd, en een hook die te lang duurt wordt afgebroken.
+IFS= read -r input || :
+
+# Haalt de waarde van een tekstveld uit de JSON-invoer in $v (leeg als het veld ontbreekt).
+val() {
+  v=${input#*\"$1\"}
+  if [ "$v" = "$input" ]; then v=; return; fi
+  v=${v#*:}; v=${v#*\"}; v=${v%%\"*}
+}
 
 # Uitzondering voor wie geen werknemer is: staat er een leeg bestand .geen-tijdlog in de map
 # van de chat (of een map erboven), dan wordt voor die chat niets genoteerd. De map zelf wordt
 # alleen gecontroleerd en nergens bewaard.
-d=$(printf '%s' "$input" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
-while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "." ]; do
+val cwd; d=$v; n=0
+while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "." ] && [ "$n" -lt 40 ]; do
   [ -f "$d/.geen-tijdlog" ] && exit 0
-  d=$(dirname "$d")
+  case $d in */*) d=${d%/*}; [ -z "$d" ] && d=/ ;; *) d=. ;; esac
+  n=$((n + 1))
 done
 
-event=$(printf '%s' "$input" | sed -n 's/.*"hook_event_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
-case "$event" in
+val hook_event_name
+case "$v" in
   SessionStart) e=start ;;
   UserPromptSubmit) e=vraag ;;
   Stop) e=klaar ;;
@@ -34,11 +44,14 @@ case "$event" in
   *) exit 0 ;;
 esac
 
-sid=$(printf '%s' "$input" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1 | tr -cd 'A-Za-z0-9-' | cut -c 1-40)
+val session_id; sid=$v
+case $sid in *[!A-Za-z0-9-]*) sid=$(printf '%s' "$sid" | tr -cd 'A-Za-z0-9-') ;; esac
+[ "${#sid}" -gt 40 ] && sid=$(printf '%s' "$sid" | cut -c 1-40)
 
-mkdir -p "$dir" 2>/dev/null || exit 0
+[ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null || exit 0
 t=$(date +%Y-%m-%dT%H:%M:%S%z)
-printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$(date +%Y-%m-%d).jsonl" 2>/dev/null
+dag=${t%%T*}
+printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$dag.jsonl" 2>/dev/null
 
 # Eerste vraag van een chat: Claude vraagt waarvoor de chat is (één keer per sessie).
 # Het antwoord wordt via soort.sh vastgelegd; alleen klant, intern of acquisitie.
@@ -51,12 +64,11 @@ fi
 
 # Herinnering om 16:45: één keer per dag, alleen als de dag nog niet is afgesloten.
 # Het scherm krijgt een melding en Claude krijgt de opdracht om dit te noemen. Er wordt niets gelezen.
-dag=$(date +%Y-%m-%d)
-nu=${P21_NU:-$(date +%H%M)}
+tt=${t#*T}; r=${tt#*:}; nu=${P21_NU:-${tt%%:*}${r%%:*}}
 if [ "$e" != einde ] && [ "$nu" -ge 1645 ] && [ ! -f "$dir/herinnerd-$dag" ] && [ ! -f "$dir/samenvatting-$dag.txt" ]; then
   : > "$dir/herinnerd-$dag" 2>/dev/null
   if command -v osascript >/dev/null 2>&1; then
-    osascript -e 'display notification "Typ /tijdlog:dag in Claude Code. Duurt 2 minuten." with title "P21 Tijdlog"' >/dev/null 2>&1
+    osascript -e 'display notification "Typ /tijdlog:dag in Claude Code. Duurt 2 minuten." with title "P21 Tijdlog"' >/dev/null 2>&1 &
   fi
   if [ "$e" = vraag ]; then
     printf '%s' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: het is na 16:45 en de gebruiker heeft de werkdag nog niet afgesloten. Beantwoord eerst de vraag en wijs er daarna in één zin op dat /tijdlog:dag typen 2 minuten kost. Lees niets uit het logbestand."}}'
