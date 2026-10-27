@@ -222,7 +222,7 @@ input[type=file]{display:none}
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
       <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
-      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, je agenda, of namen van klanten of projecten.</li>
+      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, of namen van klanten of projecten. Uit je agenda komen alleen de begin- en eindtijden van afspraken, nooit de titels.</li>
       <li>De plugin stuurt zelf het tijdstip, de soort handeling en een willekeurig sessienummer naar de eigen database van Prometheus21, zodat je dag hier klaarstaat. Pas als jij op Dag opslaan klikt, wordt je dag bewaard met het soort werk dat jij koos.</li>
       <li>Dit scherm laat alleen de dag van de gekozen naam zien. Rinse leest de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
       <li>Liever even niet? Typ <span class="mono">/tijdlog:pauze</span> in Claude Code.</li>
@@ -290,6 +290,16 @@ const S = {
 };
 let db = null;
 
+/* Afspraken uit je agenda (alleen begin- en eindtijd, nooit titels). Ze komen uit de database en splitsen de vrije stukken van je dag. */
+const serverAgenda = {};
+function agendaVandaag(){ return serverAgenda[S.datum] || []; }
+function knipPunten(bs, be){
+  const ag = agendaVandaag().reduce((l,a) => l.concat([a.s, a.e]), []);
+  const punten = [S.lunch.s, S.lunch.e].concat(ag).filter(x => x > bs && x < be);
+  return [bs].concat(Array.from(new Set(punten)).sort((a,b) => a - b), [be]);
+}
+function isAfspraak(b){ const m = (b.s + b.e) / 2; return agendaVandaag().some(a => m >= a.s && m < a.e); }
+
 /* ---------- opbouw van de dag ---------- */
 /* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
 function bouwRest(oud){
@@ -299,7 +309,7 @@ function bouwRest(oud){
   const sluit = end => {
     if(a === null) return;
     const bs = S.werk.s + a, be = S.werk.s + end;
-    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    const p = knipPunten(bs, be);
     for(let i = 0; i < p.length-1; i++){
       const s = p[i], e = p[i+1], lunch = s >= S.lunch.s && e <= S.lunch.e;
       if(e - s >= (lunch ? MIN : 10)) res.push({s, e, soort:null, lunch});
@@ -331,7 +341,7 @@ function herbouwRest(){
   const sluit = end => {
     if(a === null) return;
     const bs = S.werk.s + a, be = S.werk.s + end;
-    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    const p = knipPunten(bs, be);
     for(let i = 0; i < p.length-1; i++){
       const st = p[i], e = p[i+1], lunch = st >= S.lunch.s && e <= S.lunch.e;
       if(e - st >= (lunch ? MIN : 10)) res.push({s:st, e, soort: lunch ? "Pauze" : null});
@@ -449,7 +459,7 @@ function renderLijn(){
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
-    const el = blokEl(cls, b, b.soort || "Wat deed je hier?", tijd(b), isSel("rest",i));
+    const el = blokEl(cls, b, b.soort || (isAfspraak(b) ? "Afspraak in je agenda: kies soort werk" : "Wat deed je hier?"), tijd(b), isSel("rest",i));
     ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startRestResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
     el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
   S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
@@ -630,6 +640,8 @@ async function synchroniseer(){
   S.logRegels = res.events.map(x => ({d:new Date(x.t), e:x.e, s:x.s || "", v:x.v || ""}));
   Object.keys(serverDagen).forEach(k => delete serverDagen[k]); opgeslagenDagen.clear();
   res.dagen.forEach(d => { serverDagen[d.datum] = {blokken:d.blokken, werkdag:d.werkdag}; opgeslagenDagen.add(d.datum); });
+  Object.keys(serverAgenda).forEach(k => delete serverAgenda[k]);
+  (res.agenda || []).forEach(d => { serverAgenda[d.datum] = d.blokken; });
   const dagenMetTijd = new Set(S.logRegels.map(x => isoDag(x.d)).filter(d => d >= START)).size;
   const nuTijd = new Date().toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
   toonLaadkaart(dagenMetTijd ? "ok" : "", dagenMetTijd ? "✓ Je Claude-tijd van " + dagenMetTijd + (dagenMetTijd === 1 ? " dag" : " dagen") + " staat erin (bijgewerkt " + nuTijd + "). Dat zijn de donkerblauwe blokken." : "Er staat nog geen Claude-tijd van jou. Heb je de plugin bijgewerkt en daarna een chat gestart? Je kunt de dag ook gewoon zelf invullen.");
