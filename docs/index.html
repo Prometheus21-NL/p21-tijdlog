@@ -310,7 +310,7 @@ function knipPunten(bs, be){
 }
 function afspraakVan(b){ const m = (b.s + b.e) / 2; return agendaVandaag().find(a => !a.l && m >= a.s && m < a.e); }
 /* Alleen aan de deelnemers te zien of een afspraak intern is (niemand van buiten) of extern; de titel wordt nooit bewaard. Intern vullen we alvast in. */
-function afspraakSoort(b){ const a = afspraakVan(b); return a && a.k === "intern" ? "Intern werk" : null; }
+function afspraakSoort(b){ const a = afspraakVan(b); return !a ? null : a.k === "intern" ? "Intern werk" : a.k === "klant" ? "Klantwerk" : a.k === "extern" ? "Acquisitie" : null; }
 function isAfspraak(b){ const m = (b.s + b.e) / 2; return agendaVandaag().some(a => !a.l && m >= a.s && m < a.e); }
 /* Een lang blok (6 uur of meer, bv. een hele dag bij een klant) knipt de dag niet op, maar laat wel zien dat je agenda bezet is */
 function langBlok(b){ const m = (b.s + b.e) / 2; return agendaVandaag().find(a => a.l && m >= a.s && m < a.e); }
@@ -507,7 +507,7 @@ function renderLijn(){
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
-    const el = blokEl(cls, b, b.soort || (isAfspraak(b) ? (afspraakVan(b).k === "extern" ? "Extern: " + (afspraakVan(b).t || "afspraak") + ", klant of acquisitie?" : (afspraakVan(b).t || "Afspraak") + ": kies soort werk") : langBlok(b) ? "Lang blok in je agenda (" + fmt(langBlok(b).s) + "–" + fmt(langBlok(b).e) + "): kies soort werk" : "Wat deed je hier?"), tijd(b), isSel("rest",i));
+    const el = blokEl(cls, b, b.soort || (isAfspraak(b) ? ((afspraakVan(b).t || "Afspraak") + (afspraakVan(b).k === "klant" ? " (klant)" : afspraakVan(b).k === "extern" ? " (extern, nieuw?)" : "") + ": kies soort werk") : langBlok(b) ? "Lang blok in je agenda (" + fmt(langBlok(b).s) + "–" + fmt(langBlok(b).e) + "): kies soort werk" : "Wat deed je hier?"), tijd(b), isSel("rest",i));
     ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startRestResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
     el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
   S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
