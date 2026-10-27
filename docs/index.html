@@ -290,6 +290,12 @@ const S = {
 };
 let db = null;
 
+/* De daily van 08:30 tot 08:45 (werkdagen) staat vast als eigen blok, voorgevuld als Intern werk. De agenda zelf wordt niet gelezen. */
+const DAILY = {s:510, e:525};
+function dailyDag(){ const d = new Date(S.datum + "T12:00:00").getDay(); return d >= 1 && d <= 5; }
+function knipPunten(bs, be){ return [bs].concat([DAILY.e, S.lunch.s, S.lunch.e].filter(x => (x !== DAILY.e || dailyDag()) && x > bs && x < be), [be]); }
+function vastSoort(s, e){ return s >= S.lunch.s && e <= S.lunch.e ? "Pauze" : (dailyDag() && s >= DAILY.s && e <= DAILY.e ? "Intern werk" : null); }
+
 /* ---------- opbouw van de dag ---------- */
 /* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
 function bouwRest(oud){
@@ -299,16 +305,16 @@ function bouwRest(oud){
   const sluit = end => {
     if(a === null) return;
     const bs = S.werk.s + a, be = S.werk.s + end;
-    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    const p = knipPunten(bs, be);
     for(let i = 0; i < p.length-1; i++){
-      const s = p[i], e = p[i+1], lunch = s >= S.lunch.s && e <= S.lunch.e;
-      if(e - s >= (lunch ? MIN : 10)) res.push({s, e, soort:null, lunch});
+      const s = p[i], e = p[i+1], vast = vastSoort(s, e);
+      if(e - s >= (vast ? MIN : 10)) res.push({s, e, soort:null, vast});
     }
     a = null;
   };
   for(let i = 0; i < n; i++){ if(vrij[i]){ if(a === null) a = i; } else sluit(i); }
   sluit(n);
-  res.forEach(r => { const o = oud.find(x => r.s >= x.s && r.s < x.e); r.soort = o && o.soort ? o.soort : (r.lunch ? "Pauze" : null); delete r.lunch; });
+  res.forEach(r => { const o = oud.find(x => r.s >= x.s && r.s < x.e); r.soort = o && o.soort ? o.soort : (r.vast || null); delete r.vast; });
   return res;
 }
 /* Claude-blokken zijn te verschuiven: de vrije stukken daaromheen passen zich aan en houden hun keuze en splitsingen */
@@ -331,10 +337,10 @@ function herbouwRest(){
   const sluit = end => {
     if(a === null) return;
     const bs = S.werk.s + a, be = S.werk.s + end;
-    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    const p = knipPunten(bs, be);
     for(let i = 0; i < p.length-1; i++){
-      const st = p[i], e = p[i+1], lunch = st >= S.lunch.s && e <= S.lunch.e;
-      if(e - st >= (lunch ? MIN : 10)) res.push({s:st, e, soort: lunch ? "Pauze" : null});
+      const st = p[i], e = p[i+1], vast = vastSoort(st, e);
+      if(e - st >= (vast ? MIN : 10)) res.push({s:st, e, soort: vast});
     }
     a = null;
   };
