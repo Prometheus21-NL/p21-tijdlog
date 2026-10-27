@@ -137,6 +137,8 @@ input[type=file]{display:none}
 .ag.lang{background:repeating-linear-gradient(135deg,transparent 0 5px,var(--line) 5px 7px);border-style:dashed;color:var(--muted)}
 .ag .t{font-family:var(--font-mono);font-size:11px;opacity:.85;margin-left:6px}
 @media (max-width:700px){.baan{right:128px}.agendabaan{width:120px}.ag{font-size:11px}.ag .t{display:block;margin-left:0}}
+.bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px;font-size:13px}
+.bulk:empty{display:none}
 .uur{left:0;width:46px;right:auto;text-align:right}
 .zij{position:relative}
 .paneel{position:absolute;left:0;right:0;top:0;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
@@ -228,7 +230,7 @@ input[type=file]{display:none}
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk, Acquisitie of Persoonlijk (iets privé of voor school dat tussen je werk kwam).</li>
+      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk, Acquisitie of Persoonlijk / nvt (iets privé of voor school dat tussen je werk kwam).</li>
       <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, of namen van klanten of projecten. Uit je agenda komen alleen de begin- en eindtijden van afspraken, nooit de titels.</li>
       <li>De plugin stuurt zelf het tijdstip, de soort handeling en een willekeurig sessienummer naar de eigen database van Prometheus21, zodat je dag hier klaarstaat. Pas als jij op Dag opslaan klikt, wordt je dag bewaard met het soort werk dat jij koos.</li>
       <li>Dit scherm laat alleen de dag van de gekozen naam zien. Rinse leest de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
@@ -251,6 +253,7 @@ input[type=file]{display:none}
       </div>
     </div>
     <p class="status" style="margin:0 0 12px">Klik op een blok. Gestippeld is nog niet ingevuld.</p>
+    <div id="bulkRij" class="bulk"></div>
     <div class="lijnwrap">
       <div id="lijn" class="lijn"></div>
       <div class="zij"><div id="paneelBox" class="paneel" hidden aria-live="polite"><div id="paneel"></div></div></div>
@@ -269,9 +272,9 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 const PX = 1.4, MIN = 5;
-const CATS = ["Klantwerk","Intern werk","Acquisitie","Persoonlijk"];
+const CATS = ["Klantwerk","Intern werk","Acquisitie","Persoonlijk / nvt"];
 const CATS_REST = CATS.concat(["Pauze"]);
-const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Persoonlijk":"pers","Pauze":"pauze"};
+const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Persoonlijk / nvt":"pers","Pauze":"pauze"};
 let onthoud = {}; // map -> {soort}, alleen in deze browser
 let naam = "";
 try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; naam = localStorage.getItem("p21naam") || ""; }catch(_){}
@@ -628,7 +631,7 @@ function blokkenVoor(dag){
       if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); } else blokken.push({s:x.s, e:x.e});
     });
     const gekozen = ev.filter(x => x.e === "soort").pop();
-    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie",persoonlijk:"Persoonlijk"})[gekozen.v] || null : null}));
+    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie",persoonlijk:"Persoonlijk / nvt"})[gekozen.v] || null : null}));
   });
   /* tabnummers op volgorde van eerste gebruik; elke tab houdt zijn eigen blokken, ook als ze tegelijk lopen */
   sessies.sort((a,b) => a[0].s - b[0].s);
@@ -811,7 +814,15 @@ function volgendeOpenDag(){
   const open = dagen.filter(d => d !== S.datum && d <= nu && !opgeslagenDagen.has(d));
   return open.find(d => d > S.datum) || open[0] || null;
 }
-function alles(){ renderLijn(); renderPaneel(); renderStatus(); renderOpenDagen(); }
+/* Alle Claude-tabs zonder keuze van deze dag in één keer op een soort zetten */
+function renderBulk(){
+  const r = $("bulkRij"); r.innerHTML = "";
+  const open = S.claude.filter(b => !b.soort).length;
+  if(!open) return;
+  r.appendChild(tekst("span", open + (open === 1 ? " Claude-blok zonder keuze:" : " Claude-blokken zonder keuze, zet ze allemaal op:")));
+  CATS.forEach(c => r.appendChild(knop(c, () => { S.claude.forEach(b => { if(!b.soort) b.soort = c; }); S.dirty = true; alles(); })));
+}
+function alles(){ renderLijn(); renderPaneel(); renderStatus(); renderOpenDagen(); renderBulk(); }
 
 /* ---------- start ---------- */
 $("datum").value = S.datum; $("naam").value = naam;
