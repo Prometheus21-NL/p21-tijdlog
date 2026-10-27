@@ -15,7 +15,7 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 | een willekeurig sessienummer per tab (geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer en een kopie van deze regels gaat naar de database. Wat je typt, wat Claude antwoordt en wat er in bestanden of mails staat, gaat nooit mee.
-Bij de eerste vraag van elke chat vraagt Claude waarvoor de chat is. Dat antwoord vult het invulscherm vooraf in. In het invulscherm kun je het altijd aanpassen en kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
+Bij de eerste vraag van elke chat vraagt Claude waarvoor de chat is. Dat antwoord vult het invulscherm vooraf in. In het invulscherm kun je het altijd aanpassen en kies je zelf per blok: Klantwerk, Intern werk, Acquisitie of Persoonlijk / nvt. Namen van klanten of projecten worden niet gevraagd. Uit je agenda komen alleen de begin- en eindtijden van je afspraken in het invulscherm (afgesproken met het team), nooit de titels of deelnemers. Er is ook een keuze Persoonlijk / nvt voor wat niet voor Prometheus21 was.
 
 ## Installeren (1 regel)
 
