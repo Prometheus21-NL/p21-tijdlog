@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P21 Tijdlog</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: werkdag als verticale tijdlijn met drie banen (agenda · Claude · rest), rechts een paneel dat meebeweegt met wat je aanklikt. */
+:root{
+  --bg:#F4F4F2; --surface:#FFFFFF; --ink:#17191E; --muted:#5E6370; --line:#E2E2DE;
+  --accent:#FA660F; --accent-ink:#B8470A; --accent-soft:#FFF1E7;
+  --claude:#24324F; --claude-soft:#E5E9F2; --claude-ink:#FFFFFF;
+  --zelf:#2F7565; --zelf-soft:#E1EFEB;
+  --pauze:#B9B9B3;
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111216; --surface:#1A1C21; --ink:#ECEDEF; --muted:#9BA0AA; --line:#2B2E35;
+  --accent:#FF7A2E; --accent-ink:#FFB27F; --accent-soft:#3A2415;
+  --claude:#8FA5D4; --claude-soft:#212A3B; --claude-ink:#111216;
+  --zelf:#79C1AE; --zelf-soft:#1C2F2A; --pauze:#4A4C52; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#111216; --surface:#1A1C21; --ink:#ECEDEF; --muted:#9BA0AA; --line:#2B2E35;
+  --accent:#FF7A2E; --accent-ink:#FFB27F; --accent-soft:#3A2415;
+  --claude:#8FA5D4; --claude-soft:#212A3B; --claude-ink:#111216;
+  --zelf:#79C1AE; --zelf-soft:#1C2F2A; --pauze:#4A4C52; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{margin:0;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* kop */
+.kop{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.kop h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.kop h1 span{color:var(--accent)}
+.kop p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.dagnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dagnav button,.knop{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:500}
+.dagnav button:hover,.knop:hover{border-color:var(--accent)}
+.dagnav input[type=date]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px}
+.knop.hoofd{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.knop.hoofd:hover{filter:brightness(.95)}
+.knop:disabled{opacity:.5;cursor:not-allowed}
+
+.privacy{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px}
+.privacy summary{cursor:pointer;font-weight:600}
+.privacy ul{margin:8px 0 0;padding-left:20px;color:var(--muted);max-width:70ch}
+.privacy li{margin:2px 0}
+
+.melding{border-radius:var(--r);padding:10px 14px;background:var(--accent-soft);color:var(--accent-ink);font-size:14px}
+
+/* hoofdgrid */
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.kaart{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.kaart h2{font-size:15px;font-weight:700;margin-bottom:10px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+
+/* tijdlijn */
+.lijn-kop{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px}
+.lijn{position:relative;display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:6px}
+.uren{position:relative}
+.uur{position:absolute;right:6px;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+.baan{position:relative;border-left:1px solid var(--line)}
+.raster{position:absolute;left:52px;right:0;border-top:1px dashed var(--line);pointer-events:none}
+.blok{position:absolute;left:4px;right:4px;border-radius:7px;padding:3px 7px;font-size:12px;line-height:1.25;overflow:hidden;border:1px solid transparent;text-align:left;display:flex;flex-direction:column;gap:1px}
+.blok b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blok .t{font-family:var(--font-mono);font-size:10.5px;opacity:.85}
+.blok.klant{background:var(--accent);color:#fff}
+.blok.intern{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+.blok.eigen{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
+.blok.claude{background:var(--claude);color:var(--claude-ink)}
+.blok.zelf{background:var(--zelf-soft);color:var(--zelf);border-color:var(--zelf)}
+.blok.pauze{background:repeating-linear-gradient(135deg,transparent 0 6px,var(--line) 6px 8px);color:var(--muted);border:1px solid var(--line)}
+.blok.gat{background:transparent;border:1.5px dashed var(--accent);color:var(--accent-ink);align-items:center;justify-content:center;font-weight:600}
+.blok.gat:hover{background:var(--accent-soft)}
+.blok.actief{outline:2px solid var(--ink);outline-offset:1px}
+.voorbeeld .blok{opacity:.9}
+
+/* paneel */
+.zij{display:flex;flex-direction:column;gap:18px}
+.bron{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.bron:first-of-type{border-top:0;padding-top:0}
+.bron .info{min-width:0}
+.bron .info b{display:block;font-size:14px}
+.bron .info small{color:var(--muted);font-size:12.5px}
+.stip{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:13px}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.veld{display:flex;flex-direction:column;gap:4px}
+.veld input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 10px;width:100%}
+.rij{display:flex;gap:10px;flex-wrap:wrap}
+.rij>.veld{flex:1 1 110px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.leeg{color:var(--muted);font-size:14px}
+
+/* samenvatting */
+.balk{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--line)}
+.balk span{display:block;height:100%}
+.tot{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px;margin-top:10px}
+.tot .mono{text-align:right}
+.groot{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.status{font-size:13px;color:var(--muted)}
+
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.mono{text-align:right}
+.scroll{overflow-x:auto}
+input[type=file]{display:none}
+@media (prefers-reduced-motion:no-preference){.blok{transition:outline-color .15s}}
+</style>
+
+<style>
+:root{--acq:#E6E6E2;--acq-ink:#3A3D45;--acq-line:#CFCFC9;--on-klant:#FFFFFF}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}}
+:root[data-theme="dark"]{--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}
+.wrap{max-width:820px}
+.kop-rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kop-rechts input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:150px}
+.lijnwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}
+.lijn{display:block;grid-template-columns:none;position:relative}
+.baan{position:absolute;left:56px;right:0;top:0;bottom:0;border-left:1px solid var(--line)}
+.uur{left:0;width:46px;right:auto;text-align:right}
+.zij{position:relative}
+.paneel{position:absolute;left:0;right:0;top:0;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.paneel h3{font-size:16px;font-weight:700;margin:0 0 2px}
+.paneel .tijd{margin:0 0 12px;color:var(--muted);font-size:13px}
+.paneel .keuzes{display:flex;flex-direction:column;gap:6px}
+.paneel .acties{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.paneel .hulp{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.keuze{display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 12px;font-weight:500}
+.keuze:hover{border-color:var(--ink)}
+.keuze[aria-pressed="true"]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.sw{width:16px;height:16px;border-radius:5px;flex:none;border:1px solid transparent}
+.sw.klant{background:var(--accent)}.sw.intern{background:var(--claude)}.sw.acq{background:var(--acq);border-color:var(--acq-line)}
+.sw.pauze{background:repeating-linear-gradient(135deg,transparent 0 3px,var(--pauze) 3px 5px);border-color:var(--pauze)}
+.split{position:absolute;left:0;right:0;height:22px;transform:translateY(-11px);cursor:ns-resize;touch-action:none;z-index:3;display:flex;align-items:center;justify-content:center}
+.split::before{content:"";position:absolute;left:0;right:0;top:10px;border-top:3px solid var(--ink);border-radius:2px}
+.split span{position:relative;background:var(--ink);color:var(--surface);border-radius:999px;padding:1px 9px;font-size:11.5px}
+.split:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.blok.c-klant{background:var(--accent);color:var(--on-klant);border-color:var(--accent)}
+.blok.c-intern{background:var(--claude);color:var(--claude-ink);border-color:var(--claude)}
+.blok.c-acq{background:var(--acq);color:var(--acq-ink);border-color:var(--acq-line)}
+.blok.leeg{background:transparent;color:var(--claude);border:1.5px dashed var(--claude)}
+.blok{transition:background-color .15s,color .15s}
+.rand{position:absolute;left:0;right:0;height:10px;cursor:ns-resize;touch-action:none;opacity:0;z-index:2}
+.rand.boven{top:0}.rand.onder{bottom:0}
+.rand::after{content:"";position:absolute;left:50%;top:3px;width:34px;height:4px;margin-left:-17px;border-radius:2px;background:currentColor;opacity:.75}
+.blok:hover .rand,.blok.actief .rand{opacity:1}
+.paneel .tijden{display:flex;gap:10px;margin:0 0 12px}
+.paneel .tijden label{display:flex;flex-direction:column;gap:3px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.paneel .tijden input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 7px;font-family:var(--font-mono);font-size:13px;color:var(--ink)}
+.opslaanrij{display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center;justify-content:space-between;position:sticky;bottom:0;z-index:15;background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:14px 18px;box-shadow:0 -6px 24px rgba(0,0,0,.10)}
+.opslaanrij.open{border-color:var(--accent)}
+.opslaanrij.ok{border-color:var(--zelf);background:var(--zelf-soft)}
+.opslaanrij .tekstkant{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}
+.opslaanrij .groot{font-size:17px;font-weight:700;letter-spacing:0}
+.opslaanrij.ok .groot{color:var(--zelf)}
+.opslaanrij.open .groot{color:var(--accent-ink)}
+.knop.opslaan-groot{font-size:19px;font-weight:800;padding:16px 36px;border-radius:12px;flex:0 0 auto;min-width:220px}
+.knop.opslaan-groot:disabled{background:var(--line);border-color:var(--line);color:var(--muted)}
+.opslaanrij.ok .knop.opslaan-groot{background:var(--zelf);border-color:var(--zelf)}
+@media (max-width:640px){.knop.opslaan-groot{width:100%}}
+.dagenbalk{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.dagchip{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:74px;padding:7px 10px;border-radius:10px;border:2px solid var(--line);background:var(--surface);font-size:13px;line-height:1.25}
+.dagchip b{font-size:14px}
+.dagchip small{font-size:11.5px;color:var(--muted)}
+.dagchip.open{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.dagchip.open small{color:var(--accent-ink)}
+.dagchip.klaar{border-color:var(--zelf);background:var(--zelf-soft);color:var(--zelf)}
+.dagchip.klaar small{color:var(--zelf)}
+.dagchip.toekomst{border-color:#8497B5;background:var(--surface);color:#5B6E8E}
+.dagchip.toekomst small{color:#5B6E8E}
+.dagchip.vandaag{border-color:var(--claude);background:var(--claude);color:var(--claude-ink)}
+.dagchip.vandaag small{color:var(--claude-ink);opacity:.9}
+.dagchip.klaar.vandaag{border-color:var(--zelf);background:var(--zelf);color:#fff}
+.dagchip.klaar.vandaag small{color:#fff}
+.laadkaart{border-radius:var(--r);padding:12px 16px;background:var(--surface);border:1px solid var(--line);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.laadkaart .rij{align-items:center}
+.laadkaart code{font-family:var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 8px;user-select:all}
+.laadkaart.ok{background:var(--zelf-soft);border-color:var(--zelf);color:var(--zelf)}
+.dagchip[aria-current="true"]{outline:3px solid var(--ink);outline-offset:1px}
+@media (max-width:640px){
+  .lijnwrap{grid-template-columns:minmax(0,1fr)}
+  .zij{position:static}
+  .paneel{position:fixed;left:12px;right:12px;bottom:12px;top:auto!important;z-index:20}
+}
+</style>
+<div class="wrap">
+  <header class="kop">
+    <div>
+      <h1>P21 <span>Tijdlog</span></h1>
+      <p>Kies bij elk stuk van je dag wat voor werk het was.</p>
+    </div>
+    <div class="kop-rechts">
+      <select id="naam" aria-label="Wie ben je?" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-width:150px">
+        <option value="">Kies je naam</option>
+        <option>Rinse</option><option>Joost</option><option>Pascal</option><option>Babeth</option><option>Hidde</option><option>Daan</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="dagnav" aria-label="Dag kiezen">
+    <button id="vorige" type="button" aria-label="Vorige dag">‹</button>
+    <input id="datum" type="date" aria-label="Datum">
+    <button id="volgende" type="button" aria-label="Volgende dag">›</button>
+    <button id="vandaag" type="button">Vandaag</button>
+  </div>
+
+  <details class="privacy">
+    <summary>Wat wordt er bijgehouden, en wat niet?</summary>
+    <ul>
+      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
+      <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, je agenda, of namen van klanten of projecten.</li>
+      <li>De plugin stuurt zelf het tijdstip, de soort handeling en een willekeurig sessienummer naar de eigen database van Prometheus21, zodat je dag hier klaarstaat. Pas als jij op Dag opslaan klikt, wordt je dag bewaard met het soort werk dat jij koos.</li>
+      <li>Dit scherm laat alleen de dag van de gekozen naam zien. Rinse leest de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
+      <li>Liever even niet? Typ <span class="mono">/tijdlog:pauze</span> in Claude Code.</li>
+    </ul>
+  </details>
+
+  <div id="voorbeeldMelding" class="laadkaart">Je Claude-tijd wordt opgehaald…</div>
+
+  <nav id="dagenbalk" class="dagenbalk" aria-label="Dagen" hidden></nav>
+
+  <section class="kaart" aria-labelledby="dagTitel">
+    <div class="rij" style="justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <h2 id="dagTitel" style="margin:0">Dag</h2>
+      <div class="rij" style="gap:8px;align-items:center">
+        <span class="label">Werkdag</span>
+        <input id="werkS" class="mono" type="time" step="900" aria-label="Begin werkdag" min="00:00" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
+        <span class="label">tot</span>
+        <input id="werkE" class="mono" type="time" step="900" aria-label="Einde werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
+      </div>
+    </div>
+    <p class="status" style="margin:0 0 12px">Klik op een blok. Gestippeld is nog niet ingevuld.</p>
+    <div class="lijnwrap">
+      <div id="lijn" class="lijn"></div>
+      <div class="zij"><div id="paneelBox" class="paneel" hidden aria-live="polite"><div id="paneel"></div></div></div>
+    </div>
+  </section>
+
+  <div id="opslaanrij" class="opslaanrij">
+    <div class="tekstkant">
+      <span id="opslaanStatus" class="groot">Nog niet opgeslagen</span>
+      <span id="opslaanHulp" class="status">Er wordt niets bewaard voordat je op de knop klikt.</span>
+    </div>
+    <button id="opslaan" class="knop hoofd opslaan-groot" type="button">Dag opslaan</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+const PX = 1.4, MIN = 5;
+const CATS = ["Klantwerk","Intern werk","Acquisitie"];
+const CATS_REST = CATS.concat(["Pauze"]);
+const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Pauze":"pauze"};
+let onthoud = {}; // map -> {soort}, alleen in deze browser
+let naam = "";
+try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; naam = localStorage.getItem("p21naam") || ""; }catch(_){}
+function bewaar(){ try{ localStorage.setItem("p21tijdlog", JSON.stringify(onthoud)); localStorage.setItem("p21naam", naam); }catch(_){} }
+const naamId = () => naam.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+const fmt = m => pad(Math.floor(m/60)) + ":" + pad(Math.round(m%60));
+const tv = m => m >= 1440 ? "23:59" : fmt(m); /* een tijdveld kent geen 24:00 */
+const parseT = s => { const [h,m] = (s||"0:0").split(":").map(Number); return h*60 + m; };
+const isoDag = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
+const verschuif = (dag, n) => { const d = new Date(dag + "T12:00:00"); d.setDate(d.getDate()+n); return isoDag(d); };
+const uurMin = m => { const h = Math.floor(m/60), r = Math.round(m%60); return h ? h + " u" + (r ? " " + r + " m" : "") : r + " m"; };
+const goed = s => CATS_REST.includes(s) ? s : null;
+function tekst(tag, txt, cls){ const e = document.createElement(tag); e.textContent = txt; if(cls) e.className = cls; return e; }
+function knop(txt, fn){ const b = document.createElement("button"); b.type = "button"; b.className = "knop"; b.textContent = txt; b.onclick = fn; return b; }
+
+const S = {
+  datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
+  claude:[],
+  rest:[], voorbeeld:false, sel:null, dirty:false, logRegels:[]
+};
+let db = null;
+
+/* ---------- opbouw van de dag ---------- */
+/* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
+function bouwRest(oud){
+  const n = S.werk.e - S.werk.s, vrij = new Array(Math.max(0,n)).fill(true);
+  S.claude.forEach(b => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++) vrij[m - S.werk.s] = false; });
+  const res = []; let a = null;
+  const sluit = end => {
+    if(a === null) return;
+    const bs = S.werk.s + a, be = S.werk.s + end;
+    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    for(let i = 0; i < p.length-1; i++){
+      const s = p[i], e = p[i+1], lunch = s >= S.lunch.s && e <= S.lunch.e;
+      if(e - s >= (lunch ? MIN : 10)) res.push({s, e, soort:null, lunch});
+    }
+    a = null;
+  };
+  for(let i = 0; i < n; i++){ if(vrij[i]){ if(a === null) a = i; } else sluit(i); }
+  sluit(n);
+  res.forEach(r => { const o = oud.find(x => r.s >= x.s && r.s < x.e); r.soort = o && o.soort ? o.soort : (r.lunch ? "Pauze" : null); delete r.lunch; });
+  return res;
+}
+/* Claude-blokken zijn te verschuiven: de vrije stukken daaromheen passen zich aan en houden hun keuze en splitsingen */
+function herbouwRest(){
+  const n = Math.max(0, S.werk.e - S.werk.s), vrij = new Array(n).fill(true);
+  S.claude.forEach(b => { for(let m = Math.max(b.s,S.werk.s); m < Math.min(b.e,S.werk.e); m++) vrij[m - S.werk.s] = false; });
+  const isVrij = m => m >= S.werk.s && m < S.werk.e && vrij[m - S.werk.s];
+  const res = [];
+  S.rest.slice().sort((a,b) => a.s - b.s).forEach(o => {
+    let a = null;
+    for(let m = o.s; m <= o.e; m++){
+      const v = m < o.e && isVrij(m);
+      if(v && a === null) a = m;
+      if(!v && a !== null){ if(m - a >= MIN) res.push({s:a, e:m, soort:o.soort}); a = null; }
+    }
+  });
+  const gedekt = new Array(n).fill(false);
+  res.forEach(r => { for(let m = r.s; m < r.e; m++) if(m >= S.werk.s && m < S.werk.e) gedekt[m - S.werk.s] = true; });
+  let a = null;
+  const sluit = end => {
+    if(a === null) return;
+    const bs = S.werk.s + a, be = S.werk.s + end;
+    const p = [bs].concat([S.lunch.s,S.lunch.e].filter(x => x > bs && x < be), [be]);
+    for(let i = 0; i < p.length-1; i++){
+      const st = p[i], e = p[i+1], lunch = st >= S.lunch.s && e <= S.lunch.e;
+      if(e - st >= (lunch ? MIN : 10)) res.push({s:st, e, soort: lunch ? "Pauze" : null});
+    }
+    a = null;
+  };
+  for(let i = 0; i < n; i++){ if(vrij[i] && !gedekt[i]){ if(a === null) a = i; } else sluit(i); }
+  sluit(n);
+  res.sort((x,y) => x.s - y.s);
+  S.rest = res.reduce((l,x) => { const v = l[l.length-1]; if(v && v.e === x.s && v.soort === "Pauze" && x.soort === "Pauze") v.e = x.e; else l.push(x); return l; }, []);
+}
+function zetClaudeTijd(i, s, e){
+  const b = S.claude[i]; if(!b) return;
+  b.s = Math.max(S.werk.s, Math.min(s, e - MIN)); b.e = Math.min(S.werk.e, Math.max(e, b.s + MIN));
+  S.dirty = true; herbouwRest();
+}
+function startResize(e, i, kant){
+  e.preventDefault(); e.stopPropagation();
+  S.sel = {t:"claude", i};
+  const b = S.claude[i];
+  const beweeg = ev => {
+    const y = ev.clientY - $("lijn").getBoundingClientRect().top;
+    const m = Math.round((S.werk.s + y / PX) / MIN) * MIN;
+    if(kant === "boven") zetClaudeTijd(i, m, b.e); else zetClaudeTijd(i, b.s, m);
+    renderLijn(); renderPaneel();
+  };
+  const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderLijn(); renderPaneel(); renderStatus(); };
+  window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  renderLijn(); renderPaneel();
+}
+/* Randen van een invulblok zijn te slepen. Claude-blokken blijven altijd staan.
+   Naast een ander invulblok schuift de splitslijn. Aan een vrije rand (naast Claude-tijd of het eind van de werkdag)
+   wordt het blok kleiner en ontstaat er een leeg blok voor de rest. Sleep je terug, dan verdwijnt dat lege blok weer. */
+function heeftBuur(i, kant){
+  const b = S.rest[i], n = S.rest[kant === "onder" ? i+1 : i-1];
+  return !!n && (kant === "onder" ? n.s === b.e : n.e === b.s);
+}
+function startRestResize(e, i, kant){
+  e.preventDefault(); e.stopPropagation();
+  const b = S.rest[i]; if(!b) return;
+  const buur = heeftBuur(i, kant);
+  const j = kant === "onder" ? i : i-1;
+  const orig = kant === "onder" ? b.e : b.s;
+  let rest = null;
+  S.sel = {t:"rest", i};
+  const wijs = () => { const k = S.rest.indexOf(b); S.sel = k >= 0 ? {t:"rest", i:k} : null; };
+  const beweeg = ev => {
+    const y = ev.clientY - $("lijn").getBoundingClientRect().top;
+    let m = Math.round((S.werk.s + y / PX) / MIN) * MIN;
+    if(buur){ zetSplit(j, m); return; }
+    if(kant === "onder"){
+      m = Math.max(b.s + MIN, Math.min(orig, m)); if(orig - m < MIN) m = orig;
+      b.e = m;
+      if(m === orig){ if(rest){ S.rest.splice(S.rest.indexOf(rest), 1); rest = null; } }
+      else if(!rest){ rest = {s:m, e:orig, soort:null}; S.rest.splice(S.rest.indexOf(b)+1, 0, rest); }
+      else rest.s = m;
+    } else {
+      m = Math.min(b.e - MIN, Math.max(orig, m)); if(m - orig < MIN) m = orig;
+      b.s = m;
+      if(m === orig){ if(rest){ S.rest.splice(S.rest.indexOf(rest), 1); rest = null; } }
+      else if(!rest){ rest = {s:orig, e:m, soort:null}; S.rest.splice(S.rest.indexOf(b), 0, rest); }
+      else rest.e = m;
+    }
+    S.dirty = true; wijs(); renderLijn(); renderPaneel();
+  };
+  const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderLijn(); renderPaneel(); renderStatus(); };
+  window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  renderLijn(); renderPaneel();
+}
+S.rest = bouwRest([]);
+const zichtbaar = b => b.e > S.werk.s && b.s < S.werk.e;
+
+/* ---------- tijdlijn ---------- */
+function blokEl(cls, b, titel, sub, sel, baanInfo){
+  const el = document.createElement("button");
+  el.type = "button"; el.className = "blok " + cls + (sel ? " actief" : "");
+  const top = (Math.max(b.s,S.werk.s) - S.werk.s) * PX, h = Math.max((Math.min(b.e,S.werk.e) - Math.max(b.s,S.werk.s)) * PX - 2, 14);
+  el.style.top = top + "px"; el.style.height = h + "px";
+  if(baanInfo && baanInfo.n > 1){ el.style.right = "auto"; el.style.left = "calc(" + baanInfo.i + " * (100% - 8px) / " + baanInfo.n + " + 4px)"; el.style.width = "calc((100% - 8px) / " + baanInfo.n + " - 3px)"; }
+  el.appendChild(tekst("b", titel));
+  if(h > 30){ el.appendChild(tekst("span", sub, "t")); }
+  el.setAttribute("aria-label", titel + ", " + fmt(b.s) + " tot " + fmt(b.e));
+  return el;
+}
+/* tabs die tegelijk liepen komen naast elkaar te staan */
+function rijenVoor(){
+  const idx = S.claude.map((b,i) => i).sort((a,b) => S.claude[a].s - S.claude[b].s);
+  const res = new Array(S.claude.length); let groep = [], groepEind = -1, baanEind = [];
+  const sluit = () => { const n = baanEind.length; groep.forEach(i => { res[i].n = n; }); groep = []; baanEind = []; };
+  idx.forEach(i => {
+    const b = S.claude[i];
+    if(b.s >= groepEind && groep.length) sluit();
+    let l = baanEind.findIndex(e => e <= b.s); if(l < 0){ l = baanEind.length; baanEind.push(0); }
+    baanEind[l] = b.e; groepEind = Math.max(groepEind, b.e);
+    res[i] = {i:l, n:1}; groep.push(i);
+  });
+  sluit();
+  return res;
+}
+function renderLijn(){
+  const L = $("lijn"); L.innerHTML = "";
+  L.style.height = ((S.werk.e - S.werk.s) * PX) + "px";
+  for(let m = Math.ceil(S.werk.s/60)*60; m <= S.werk.e; m += 60){
+    const u = tekst("span", fmt(m), "uur"); u.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(u);
+    const r = document.createElement("div"); r.className = "raster"; r.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(r);
+  }
+  const baan = document.createElement("div"); baan.className = "baan"; L.appendChild(baan);
+  const isSel = (t,i) => S.sel && S.sel.t === t && S.sel.i === i;
+  const tijd = b => fmt(b.s) + "–" + fmt(b.e);
+  const rijen = rijenVoor();
+  S.claude.forEach((b,i) => { if(!zichtbaar(b)) return;
+    const tab = b.tab ? "tab " + b.tab : "Claude";
+    const el = b.soort ? blokEl("c-" + KLEUR[b.soort], b, b.soort, tab + " · " + tijd(b), isSel("claude",i), rijen[i]) : blokEl("leeg", b, (b.tab ? "Tab " + b.tab : "Claude") + " · kies soort werk", tijd(b), isSel("claude",i), rijen[i]);
+    ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
+    el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
+  S.rest.forEach((b,i) => {
+    const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
+    const el = blokEl(cls, b, b.soort || "Wat deed je hier?", tijd(b), isSel("rest",i));
+    ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startRestResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
+    el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
+  S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
+  $("dagTitel").textContent = new Date(S.datum + "T12:00:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"});
+  plaatsPaneel();
+}
+/* het paneel staat naast het gekozen blok */
+function plaatsPaneel(){
+  const box = $("paneelBox"); if(box.hidden || !S.sel) return;
+  const b = S.sel.t === "claude" ? S.claude[S.sel.i] : S.rest[S.sel.i]; if(!b) return;
+  const H = (S.werk.e - S.werk.s) * PX;
+  const top = Math.max(0, (Math.max(b.s,S.werk.s) - S.werk.s) * PX);
+  box.style.top = Math.max(0, Math.min(top, H - box.offsetHeight)) + "px";
+}
+
+/* splitslijn: sleep of gebruik pijltje omhoog/omlaag */
+function zetSplit(i, m){
+  const a = S.rest[i], c = S.rest[i+1]; if(!a || !c) return;
+  m = Math.max(a.s + MIN, Math.min(c.e - MIN, Math.round(m/MIN)*MIN));
+  if(m === a.e) return;
+  a.e = m; c.s = m; S.dirty = true; renderLijn(); renderPaneel();
+}
+function handleEl(i){
+  const a = S.rest[i];
+  const h = document.createElement("div"); h.className = "split"; h.tabIndex = 0; h.setAttribute("role","slider"); h.dataset.i = i;
+  h.setAttribute("aria-label","Splitslijn. Pijltje omhoog of omlaag verplaatst hem."); h.setAttribute("aria-valuetext", fmt(a.e));
+  h.style.top = ((a.e - S.werk.s) * PX) + "px"; h.appendChild(tekst("span", fmt(a.e), "mono"));
+  h.onpointerdown = e => {
+    e.preventDefault(); e.stopPropagation();
+    const beweeg = ev => { const y = ev.clientY - $("lijn").getBoundingClientRect().top; zetSplit(i, S.werk.s + y / PX); };
+    const klaar = () => { window.removeEventListener("pointermove", beweeg); window.removeEventListener("pointerup", klaar); window.removeEventListener("pointercancel", klaar); renderStatus(); };
+    window.addEventListener("pointermove", beweeg); window.addEventListener("pointerup", klaar); window.addEventListener("pointercancel", klaar);
+  };
+  h.onkeydown = e => {
+    if(e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault(); zetSplit(i, S.rest[i].e + (e.key === "ArrowUp" ? -MIN : MIN));
+    const nieuw = $("lijn").querySelector('.split[data-i="' + i + '"]'); if(nieuw) nieuw.focus();
+  };
+  return h;
+}
+function splits(i){
+  const b = S.rest[i]; if(!b || b.e - b.s < 2*MIN) return;
+  const m = Math.round((b.s + b.e)/2/MIN)*MIN;
+  S.rest.splice(i, 1, {s:b.s, e:m, soort:b.soort}, {s:m, e:b.e, soort:null});
+  S.sel = {t:"rest", i:i+1}; S.dirty = true; alles();
+}
+function voegSamen(i){
+  const a = S.rest[i], c = S.rest[i+1]; if(!a || !c || a.e !== c.s) return;
+  S.rest.splice(i, 2, {s:a.s, e:c.e, soort:a.soort}); S.sel = {t:"rest", i}; S.dirty = true; alles();
+}
+
+/* ---------- paneel (live: het blok krijgt meteen de kleur van je keuze) ---------- */
+function kies(sel){ S.sel = (S.sel && S.sel.t === sel.t && S.sel.i === sel.i) ? null : sel; renderLijn(); renderPaneel(); }
+function zetSoort(sel, b, o){
+  b.soort = o; S.dirty = true;
+    alles();
+}
+function renderPaneel(){
+  const box = $("paneelBox"), P = $("paneel"); P.innerHTML = "";
+  const sel = S.sel;
+  if(!sel){ box.hidden = true; return; }
+  const b = sel.t === "claude" ? S.claude[sel.i] : S.rest[sel.i];
+  if(!b){ box.hidden = true; return; }
+  box.hidden = false;
+  P.appendChild(tekst("h3", "Wat deed je hier?"));
+  P.appendChild(tekst("p", fmt(b.s) + "–" + fmt(b.e) + " · " + uurMin(b.e - b.s) + (sel.t === "claude" ? " · met Claude" + (b.tab ? ", tab " + b.tab : "") : ""), "tijd mono"));
+  if(sel.t === "claude"){
+    const t = document.createElement("div"); t.className = "tijden";
+    const veld = (lab, waarde, fn) => { const l = document.createElement("label"); l.textContent = lab; const inp = document.createElement("input"); inp.type = "time"; inp.step = 300; inp.value = fmt(waarde); inp.onchange = () => { if(inp.value){ fn(parseT(inp.value)); alles(); } }; l.appendChild(inp); return l; };
+    t.append(veld("Van", b.s, v => zetClaudeTijd(sel.i, v, b.e)), veld("Tot", b.e, v => zetClaudeTijd(sel.i, b.s, v)));
+    P.appendChild(t);
+    P.appendChild(tekst("p","Staat dit te lang? Sleep de onderkant van het blok omhoog of pas de tijd aan.","hulp")).style.margin = "0 0 12px";
+  }
+  const k = document.createElement("div"); k.className = "keuzes";
+  (sel.t === "claude" ? CATS : CATS_REST).forEach(o => {
+    const c = document.createElement("button"); c.type = "button"; c.className = "keuze"; c.setAttribute("aria-pressed", String(o === b.soort));
+    const sw = document.createElement("span"); sw.className = "sw " + KLEUR[o]; c.append(sw, document.createTextNode(o));
+    c.onclick = () => zetSoort(sel, b, o); k.appendChild(c);
+  });
+  P.appendChild(k);
+  const acties = document.createElement("div"); acties.className = "acties";
+  if(sel.t === "rest"){
+    if(b.e - b.s >= 2*MIN) acties.appendChild(knop("Blok splitsen", () => splits(sel.i)));
+    const v = S.rest[sel.i+1]; if(v && v.s === b.e) acties.appendChild(knop("Samenvoegen met volgende", () => voegSamen(sel.i)));
+  }
+  acties.appendChild(knop("Klaar", () => { S.sel = null; alles(); }));
+  P.appendChild(acties);
+  if(sel.t === "rest") P.appendChild(tekst("p","Sleep de boven- of onderkant van het blok om de tijd aan te passen. Deed je hier meer dan één ding? Splits het blok en sleep de zwarte lijn naar de goede plek.","hulp"));
+  plaatsPaneel();
+}
+
+/* ---------- Claude-tijdlog ---------- */
+function normTijd(t){ return String(t).replace(/([+-]\d\d)(\d\d)$/,"$1:$2"); }
+function leesLog(txt){
+  const out = [];
+  txt.split(/\r?\n/).forEach(r => { r = r.trim(); if(!r) return; try{ const o = JSON.parse(r); const d = new Date(normTijd(o.t)); if(!isNaN(d)) out.push({d,e:o.e,s:o.s||"",v:o.v||""}); }catch(_){} });
+  return out;
+}
+const minDag = x => x.d.getHours()*60 + x.d.getMinutes() + x.d.getSeconds()/60;
+/* een vraag loopt tot de eerstvolgende "klaar"; stukken met dezelfde map die minder dan 15 min uit elkaar liggen horen bij elkaar */
+function blokkenVoor(dag){
+  const alle = S.logRegels.filter(x => isoDag(x.d) === dag).sort((a,b) => a.d - b.d);
+  const perSessie = {};
+  alle.forEach(x => { (perSessie[x.s] = perSessie[x.s] || []).push(x); });
+  const sessies = [];
+  /* per sessie (tab): een vraag loopt tot de eerstvolgende "klaar" van dezelfde sessie, +5 min.
+     Zonder "klaar" (bv. afgebroken) tellen we hooguit 45 min. Tabs die open staan zonder vraag tellen niet mee. */
+  Object.values(perSessie).forEach(ev => {
+    const iv = [];
+    ev.forEach((x,i) => {
+      if(x.e !== "vraag") return;
+      const m = minDag(x); let eind = m + 5;
+      for(let j = i+1; j < ev.length; j++){
+        const mj = minDag(ev[j]);
+        if(ev[j].e === "klaar" || ev[j].e === "einde"){ eind = Math.max(eind, mj + 5); break; }
+        if(ev[j].e === "vraag" || ev[j].e === "start"){ eind = Math.max(eind, Math.min(mj, m + 45)); break; }
+      }
+      iv.push({s:m, e:eind});
+    });
+    /* binnen één tab horen stukken die minder dan 15 min uit elkaar liggen bij elkaar */
+    const blokken = [];
+    iv.sort((a,b) => a.s - b.s).forEach(x => {
+      const l = blokken.length ? blokken[blokken.length-1] : null;
+      if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); } else blokken.push({s:x.s, e:x.e});
+    });
+    const gekozen = ev.filter(x => x.e === "soort").pop();
+    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie"})[gekozen.v] || null : null}));
+  });
+  /* tabnummers op volgorde van eerste gebruik; elke tab houdt zijn eigen blokken, ook als ze tegelijk lopen */
+  sessies.sort((a,b) => a[0].s - b[0].s);
+  const res = [];
+  sessies.forEach((blokken,k) => blokken.forEach(b => res.push({s:Math.floor(b.s), e:Math.max(Math.ceil(b.e), Math.floor(b.s)+5), soort:blokken.soort, tab:k+1})));
+  return res.sort((a,b) => a.s - b.s);
+}
+function wegVoorbeeld(){
+  if(!S.voorbeeld) return;
+  S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null;
+}
+/* De werkdag loopt standaard van 08:30 tot 17:00, maar wie eerder begint of langer doorwerkt ziet de hele dag. */
+function pasWerkdagAan(){
+  if(!S.claude.length) return;
+  const eerst = Math.min(...S.claude.map(b => b.s)), laatst = Math.max(...S.claude.map(b => b.e));
+  S.werk.s = Math.max(0, Math.min(510, Math.floor(eerst/30)*30));
+  S.werk.e = Math.min(1440, Math.max(1020, Math.ceil(laatst/30)*30));
+  $("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
+}
+/* ---------- verbinding met de database ---------- */
+const SUPA = "https://zxccsvfveeuarkwbycvw.supabase.co/rest/v1/rpc/";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4Y2NzdmZ2ZWV1YXJrd2J5Y3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwNzg4MzQsImV4cCI6MjEwODY1NDgzNH0.8e3yejJITp4Qa89KInUepZ3vy_JP1_LrTfZcL6ANhb0"; /* openbare sleutel: kan alleen de drie functies gebruiken, niet in de tabellen kijken */
+let teamcode = "";
+try{ const u = new URLSearchParams(location.search).get("c"); if(u) localStorage.setItem("p21code", u); teamcode = localStorage.getItem("p21code") || u || ""; }
+catch(_){ teamcode = new URLSearchParams(location.search).get("c") || ""; }
+async function rpc(fn, body){
+  const r = await fetch(SUPA + fn, {method:"POST", headers:{apikey:KEY, Authorization:"Bearer " + KEY, "Content-Type":"application/json"}, body:JSON.stringify(body)});
+  if(!r.ok) throw new Error("http " + r.status);
+  return r.json();
+}
+const serverDagen = {};
+db = {doc: p => { const m = p.match(/\/d\/(\d{4}-\d\d-\d\d)$/); return {
+  get: async () => { const d = m && serverDagen[m[1]]; return {exists:!!d, data:() => d}; },
+  set: async data => {
+    if(!m) return;
+    const ok = await rpc("tijdlog_opslaan", {p_code:teamcode, p_naam:naam, p_datum:m[1], p_werkdag:data.werkdag, p_blokken:data.blokken, p_totalen:data.totalen});
+    if(ok !== true){ const e = new Error("code"); e.code = "invalid_argument"; throw e; }
+    serverDagen[m[1]] = {blokken:data.blokken, werkdag:data.werkdag};
+  } }; }};
+function toonLaadkaart(toestand, tekst){
+  const k = $("voorbeeldMelding"); k.className = "laadkaart" + (toestand === "ok" ? " ok" : ""); k.textContent = tekst;
+}
+/* Haalt je Claude-tijd en je opgeslagen dagen op. De plugin zet je tijden zelf in de database. */
+async function synchroniseer(){
+  if(!teamcode){ toonLaadkaart("", "Open dit scherm via de link in de mail of de agenda-afspraak. Die link bevat de teamcode."); renderStatus(); return; }
+  if(!naamId()){ toonLaadkaart("", "Kies rechtsboven je naam. Dan staat je Claude-tijd er vanzelf in."); renderStatus(); return; }
+  let res;
+  try{ res = await rpc("tijdlog_lees", {p_code:teamcode, p_naam:naam, p_vanaf:START}); }
+  catch(_){ toonLaadkaart("", "Geen verbinding. Je kunt de dag zelf invullen. Opslaan lukt zodra je weer internet hebt."); return; }
+  if(res === null){ toonLaadkaart("", "De teamcode klopt niet. Open het scherm via de link in de laatste mail of de agenda-afspraak."); return; }
+  S.logRegels = res.events.map(x => ({d:new Date(x.t), e:x.e, s:x.s || "", v:x.v || ""}));
+  Object.keys(serverDagen).forEach(k => delete serverDagen[k]); opgeslagenDagen.clear();
+  res.dagen.forEach(d => { serverDagen[d.datum] = {blokken:d.blokken, werkdag:d.werkdag}; opgeslagenDagen.add(d.datum); });
+  const dagenMetTijd = new Set(S.logRegels.map(x => isoDag(x.d)).filter(d => d >= START)).size;
+  const nuTijd = new Date().toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
+  toonLaadkaart(dagenMetTijd ? "ok" : "", dagenMetTijd ? "✓ Je Claude-tijd van " + dagenMetTijd + (dagenMetTijd === 1 ? " dag" : " dagen") + " staat erin (bijgewerkt " + nuTijd + "). Dat zijn de donkerblauwe blokken." : "Er staat nog geen Claude-tijd van jou. Heb je de plugin bijgewerkt en daarna een chat gestart? Je kunt de dag ook gewoon zelf invullen.");
+  if(!S.dirty){ S.claude = blokkenVoor(S.datum); pasWerkdagAan(); S.rest = bouwRest([]); S.sel = null; await laadOpgeslagen(); }
+  alles();
+}
+
+/* ---------- totalen, opslaan, laden ---------- */
+function totalen(){
+  /* tegelijk lopende tabs delen de minuut: zo blijft het totaal gelijk aan je echte werktijd */
+  const cat = {};
+  const voeg = (k, m) => { cat[k] = (cat[k]||0) + m; };
+  for(let m = S.werk.s; m < S.werk.e; m++){
+    const actief = S.claude.filter(b => m >= b.s && m < b.e);
+    if(actief.length){ actief.forEach(b => voeg(b.soort || "Niet gekozen", 1/actief.length)); continue; }
+    const r = S.rest.find(x => m >= x.s && m < x.e);
+    if(r) voeg(r.soort || "Niet gekozen", 1);
+  }
+  Object.keys(cat).forEach(k => { cat[k] = Math.round(cat[k]); });
+  return {cat};
+}
+function zetBalk(toestand, groot, hulp){
+  const r = $("opslaanrij"); r.className = "opslaanrij" + (toestand ? " " + toestand : "");
+  $("opslaanStatus").textContent = groot; if(hulp !== undefined) $("opslaanHulp").textContent = hulp;
+}
+function renderStatus(){
+  const k = $("opslaan");
+  k.disabled = !teamcode || !naamId();
+  if(!teamcode) zetBalk("open", "Open dit scherm via de link in de mail.", "Die link bevat de teamcode. Zonder code kan ik niets opslaan.");
+  else if(!naamId()) zetBalk("open", "Kies rechtsboven je naam.", "Zonder naam kan ik je dag niet opslaan.");
+  else if(S.dirty){ S.net = null; zetBalk("open", "Nog niet opgeslagen", "Klik op de knop. Pas daarna is je dag goed doorgekomen."); }
+  else if(S.net) zetBalk("ok", S.net.groot, S.net.hulp);
+  else if(opgeslagenDagen.has(S.datum)) zetBalk("ok", "✓ Deze dag is opgeslagen", "Pas je nog iets aan? Klik dan opnieuw op Dag opslaan.");
+  else zetBalk("open", "Nog niet opgeslagen", "Kijk of alles klopt en klik dan op de knop.");
+}
+async function opslaan(){
+  if(!naamId() || !teamcode) return;
+  const k = $("opslaan"); k.disabled = true; zetBalk("open", "Bezig met opslaan…", "");
+  const blokken = [];
+  S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||"",tab:b.tab||0}));
+  S.rest.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort||""}));
+  try{
+    await db.doc("dagen/" + naamId()).set({naam, laatst:S.datum});
+    await db.doc("dagen/" + naamId() + "/d/" + S.datum).set({naam, datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, blokken, totalen:totalen(), opgeslagen:new Date().toISOString()});
+    S.dirty = false; opgeslagenDagen.add(S.datum);
+    const tijdNu = new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+    const volgende = volgendeOpenDag();
+    S.net = {groot:"✓ Opgeslagen om " + tijdNu, hulp: volgende ? "Goed gedaan. Ik ga naar de volgende dag die nog open staat." : "Alles is opgeslagen. Je bent klaar en kunt dit scherm sluiten."};
+    zetBalk("ok", S.net.groot, S.net.hulp);
+    renderOpenDagen();
+    if(volgende) setTimeout(async () => { if(!S.dirty) { await wisselDag(volgende); } }, 1400);
+  }catch(err){
+    zetBalk("open", err && err.code === "invalid_argument" ? "De teamcode klopt niet." : err && err.code === "quota_exceeded" ? "De opslag is vol." : "Opslaan lukte niet.", err && err.code === "invalid_argument" ? "Open het scherm via de link in de mail." : err && err.code === "quota_exceeded" ? "Laat het Rinse weten." : "Probeer het opnieuw.");
+  }finally{ renderStatus(); }
+}
+async function laadOpgeslagen(){
+  if(!naamId()) return false;
+  try{
+    const snap = await db.doc("dagen/" + naamId() + "/d/" + S.datum).get();
+    if(!snap.exists) return false;
+    const d = snap.data(), bl = Array.isArray(d.blokken) ? d.blokken : [];
+    if(!bl.some(b => b.bron === "claude" || b.bron === "zelf")) return false;
+    wegVoorbeeld();
+    S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
+    $("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
+    const lees = b => ({s:parseT(b.van), e:parseT(b.tot), soort:goed(b.soort)});
+    S.claude = bl.filter(b => b.bron === "claude").map(b => Object.assign(lees(b), {tab:b.tab||0}));
+    S.rest = bl.filter(b => b.bron === "zelf").map(lees);
+    S.dirty = false; S.sel = null;
+    opgeslagenDagen.add(S.datum);
+    return true;
+  }catch(_){ return false; }
+}
+async function wisselDag(dag){
+  S.datum = dag; $("datum").value = dag; S.sel = null; S.net = null;
+  if(!S.voorbeeld){ S.claude = blokkenVoor(dag); pasWerkdagAan(); S.rest = bouwRest([]); S.dirty = !opgeslagenDagen.has(dag); }
+  await laadOpgeslagen();
+  alles();
+}
+
+/* Dagen met Claude-tijd die nog niet zijn opgeslagen staan bovenaan, zodat je ze achteraf kunt invullen. */
+const opgeslagenDagen = new Set();
+async function ververstOpenDagen(){
+  if(naamId()){
+    const nu = vandaagIso();
+    for(const d of dagenLijst().dagen.filter(d => d <= nu)){
+      try{ const snap = await db.doc("dagen/" + naamId() + "/d/" + d).get(); if(snap.exists) opgeslagenDagen.add(d); else opgeslagenDagen.delete(d); }catch(_){}
+    }
+  }
+  renderOpenDagen();
+}
+const WEEKDAG = ["zo","ma","di","wo","do","vr","za"];
+const vandaagIso = () => isoDag(new Date());
+/* De balk toont de werkdagen van de afgelopen week, vandaag en de twee dagen erna, ook als er nog geen Claude-tijd is geladen. */
+const START = "2026-10-26"; /* eerste dag van de meting */
+function dagenLijst(){
+  const nu = vandaagIso(), metLog = new Set(S.logRegels.map(x => isoDag(x.d)).filter(d => d >= START));
+  const begin = verschuif(nu,-9) < START ? START : verschuif(nu,-9);
+  const res = [];
+  for(let d = begin; d <= verschuif(nu,2); d = verschuif(d,1)){
+    const wd = new Date(d + "T12:00").getDay();
+    if(metLog.has(d) || d === S.datum || d === nu || (wd !== 0 && wd !== 6)) res.push(d);
+  }
+  return {dagen: res, metLog};
+}
+function renderOpenDagen(){
+  const box = $("dagenbalk");
+  box.hidden = false; box.textContent = "";
+  const nu = vandaagIso(), {dagen} = dagenLijst();
+  dagen.forEach(d => {
+    const klaar = opgeslagenDagen.has(d) && !(d === S.datum && S.dirty), toekomst = d > nu, vandaag = d === nu;
+    const k = document.createElement("button"); k.type = "button";
+    k.className = "dagchip " + (klaar ? "klaar" : toekomst ? "toekomst" : vandaag ? "" : "open") + (vandaag ? " vandaag" : "");
+    if(d === S.datum) k.setAttribute("aria-current","true");
+    const dt = new Date(d + "T12:00");
+    k.appendChild(tekst("b", WEEKDAG[dt.getDay()] + " " + dt.getDate()));
+    k.appendChild(tekst("small", klaar ? "✓ opgeslagen" : vandaag ? "vandaag" : toekomst ? (d === verschuif(nu,1) ? "morgen" : d === verschuif(nu,2) ? "overmorgen" : "later") : "nog invullen"));
+    k.onclick = () => wisselDag(d);
+    box.appendChild(k);
+  });
+}
+/* na opslaan: spring naar de volgende dag die nog open staat (eerst later, anders eerder) */
+function volgendeOpenDag(){
+  const nu = vandaagIso(), {dagen, metLog} = dagenLijst();
+  const open = dagen.filter(d => d !== S.datum && d <= nu && !opgeslagenDagen.has(d));
+  return open.find(d => d > S.datum) || open[0] || null;
+}
+function alles(){ renderLijn(); renderPaneel(); renderStatus(); renderOpenDagen(); }
+
+/* ---------- start ---------- */
+$("datum").value = S.datum; $("naam").value = naam;
+$("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
+$("vorige").onclick = () => wisselDag(verschuif(S.datum,-1));
+$("volgende").onclick = () => wisselDag(verschuif(S.datum,1));
+$("vandaag").onclick = () => wisselDag(isoDag(new Date()));
+$("datum").onchange = e => { if(e.target.value) wisselDag(e.target.value); };
+$("naam").onchange = async e => { naam = e.target.value.trim(); bewaar(); S.dirty = false; await synchroniseer(); };
+const nieuweWerkdag = () => { S.rest = bouwRest(S.rest); S.dirty = !S.voorbeeld; S.sel = null; alles(); };
+$("werkS").onchange = e => { const v = parseT(e.target.value); if(v < S.werk.e){ S.werk.s = v; nieuweWerkdag(); } };
+$("werkE").onchange = e => { let v = parseT(e.target.value); if(v >= 1439) v = 1440; if(v > S.werk.s){ S.werk.e = v; nieuweWerkdag(); } };
+$("opslaan").onclick = opslaan;
+alles();
+
+/* bij openen: je Claude-tijd en opgeslagen dagen komen vanzelf binnen en worden elke minuut ververst zolang je niet aan het aanpassen bent */
+(async function(){
+  await synchroniseer();
+  setInterval(() => { if(!document.hidden && !S.dirty && !S.sel) synchroniseer(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if(!document.hidden && !S.dirty && !S.sel) synchroniseer(); });
+})();
+})();
+</script>
+</body></html>

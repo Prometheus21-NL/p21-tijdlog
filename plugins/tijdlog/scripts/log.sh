@@ -28,6 +28,35 @@ val() {
 # Uitzondering voor wie geen werknemer is: staat er een leeg bestand .geen-tijdlog in de map
 # van de chat (of een map erboven), dan wordt voor die chat niets genoteerd. De map zelf wordt
 # alleen gecontroleerd en nergens bewaard.
+# Stuurt nieuwe regels van het logbestand naar Supabase, zodat je dag in het invulscherm klaarstaat.
+# Verstuurd wordt alleen: je voornaam, tijdstip, soort handeling (start, vraag, klaar, einde, soort) en het
+# sessienummer. Nooit wat je typt. Zonder voornaam of zonder internet gebeurt er niets.
+sync() {
+  [ -f "$dir/naam.txt" ] || return 0
+  command -v curl >/dev/null 2>&1 || return 0
+  IFS= read -r nm < "$dir/naam.txt" || :
+  case $nm in ''|*[!A-Za-z]*) return 0 ;; esac
+  . "$(dirname "$0")/config.sh" 2>/dev/null || return 0
+  for f in "$dir"/*.jsonl; do
+    [ -f "$f" ] || continue
+    b=${f##*/}; b=${b%.jsonl}; m="$dir/.verzonden-$b"
+    if [ -f "$m" ]; then
+      [ "$f" -nt "$m" ] || continue
+      IFS= read -r klaar < "$m" || klaar=0
+    else klaar=0; fi
+    case $klaar in ''|*[!0-9]*) klaar=0 ;; esac
+    i=0; batch=
+    while IFS= read -r regel || [ -n "$regel" ]; do
+      i=$((i + 1)); [ "$i" -le "$klaar" ] && continue
+      case $regel in '{'*'}') batch="${batch:+$batch,}$regel" ;; esac
+      [ $((i - klaar)) -ge 400 ] && break
+    done < "$f"
+    [ "$i" -gt "$klaar" ] || continue
+    ( r=$(curl -s -m 8 -X POST "$P21_URL" -H "apikey: $P21_KEY" -H "Authorization: Bearer $P21_KEY" -H "Content-Type: application/json" -d "{\"p_naam\":\"$nm\",\"p_events\":[$batch]}" 2>/dev/null)
+      case $r in ''|-*|*[!0-9]*) ;; *) printf '%s' "$i" > "$m" ;; esac ) >/dev/null 2>&1 &
+  done
+}
+
 val cwd; d=$v; n=0
 while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "." ] && [ "$n" -lt 40 ]; do
   [ -f "$d/.geen-tijdlog" ] && exit 0
@@ -52,13 +81,18 @@ case $sid in *[!A-Za-z0-9-]*) sid=$(printf '%s' "$sid" | tr -cd 'A-Za-z0-9-') ;;
 t=$(date +%Y-%m-%dT%H:%M:%S%z)
 dag=${t%%T*}
 printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$dag.jsonl" 2>/dev/null
+sync
 
 # Eerste vraag van een chat: Claude vraagt waarvoor de chat is (één keer per sessie).
 # Het antwoord wordt via soort.sh vastgelegd; alleen klant, intern of acquisitie.
 if [ "$e" = vraag ] && [ -n "$sid" ] && [ ! -f "$dir/gevraagd-$sid" ]; then
   : > "$dir/gevraagd-$sid" 2>/dev/null
-  soort="$(cd "$(dirname "$0")" && pwd)/soort.sh"
-  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen. Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets. Sluit je antwoord op deze eerste vraag af met een eigen regel: Tijdlog invullen (2 minuten): https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j"}}' "$soort" "$sid"
+  skripts="$(cd "$(dirname "$0")" && pwd)"
+  naamvraag=""
+  if [ ! -f "$dir/naam.txt" ]; then
+    naamvraag=" Vraag in hetzelfde bericht ook: Wat is je voornaam? (Rinse, Joost, Pascal, Babeth, Hidde of Daan). Voer daarna uit: sh $skripts/naam.sh <voornaam>. Dat hoeft maar één keer."
+  fi
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen van klanten of projecten.%s Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s/soort.sh %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets."}}' "$naamvraag" "$skripts" "$sid"
   exit 0
 fi
 
@@ -71,7 +105,7 @@ if [ "$e" != einde ] && [ "$nu" -ge 1645 ] && [ ! -f "$dir/herinnerd-$dag" ] && 
     osascript -e 'display notification "Typ /tijdlog:dag in Claude Code. Duurt 2 minuten." with title "P21 Tijdlog"' >/dev/null 2>&1 &
   fi
   if [ "$e" = vraag ]; then
-    printf '%s' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: het is na 16:45 en de gebruiker heeft de werkdag nog niet afgesloten. Beantwoord eerst de vraag en wijs er daarna in één zin op dat het invullen 2 minuten kost en zet de link op een eigen regel: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j Lees niets uit het logbestand."}}'
+    printf '%s' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: het is na 16:45 en de gebruiker heeft de werkdag nog niet afgesloten. Beantwoord eerst de vraag en wijs er daarna in één zin op dat het invullen 2 minuten kost. Het scherm staat in de herinneringsmail en in de agenda-afspraak van 16:45 Lees niets uit het logbestand."}}'
   fi
 fi
 exit 0

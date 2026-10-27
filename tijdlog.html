@@ -178,8 +178,16 @@ input[type=file]{display:none}
 .dagchip.open small{color:var(--accent-ink)}
 .dagchip.klaar{border-color:var(--zelf);background:var(--zelf-soft);color:var(--zelf)}
 .dagchip.klaar small{color:var(--zelf)}
-.dagchip.toekomst{border-style:dashed}
-.dagchip.nu{box-shadow:0 0 0 2px var(--ink) inset}
+.dagchip.toekomst{border-color:#8497B5;background:var(--surface);color:#5B6E8E}
+.dagchip.toekomst small{color:#5B6E8E}
+.dagchip.vandaag{border-color:var(--claude);background:var(--claude);color:var(--claude-ink)}
+.dagchip.vandaag small{color:var(--claude-ink);opacity:.9}
+.dagchip.klaar.vandaag{border-color:var(--zelf);background:var(--zelf);color:#fff}
+.dagchip.klaar.vandaag small{color:#fff}
+.laadkaart{border-radius:var(--r);padding:12px 16px;background:var(--surface);border:1px solid var(--line);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.laadkaart .rij{align-items:center}
+.laadkaart code{font-family:var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 8px;user-select:all}
+.laadkaart.ok{background:var(--zelf-soft);border-color:var(--zelf);color:var(--zelf)}
 .dagchip[aria-current="true"]{outline:3px solid var(--ink);outline-offset:1px}
 @media (max-width:640px){
   .lijnwrap{grid-template-columns:minmax(0,1fr)}
@@ -195,7 +203,7 @@ input[type=file]{display:none}
     </div>
     <div class="kop-rechts">
       <input id="naam" type="text" maxlength="30" placeholder="Je voornaam" aria-label="Je voornaam" autocomplete="given-name">
-      <label class="knop hoofd" for="bestand">Tijdlog laden</label>
+      <button id="laadKnop" class="knop" type="button">Claude-tijd ophalen</button>
       <input id="bestand" type="file" accept=".jsonl,.json,.txt" multiple>
     </div>
   </header>
@@ -218,7 +226,10 @@ input[type=file]{display:none}
     </ul>
   </details>
 
-  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Klik op <b>Tijdlog laden</b> en kies de bestanden van je dagen (selecteer er gerust meer dan één) uit de map <span class="mono">P21-tijdlog</span>.</div>
+  <div id="voorbeeldMelding" class="laadkaart">
+    <div><b>Je kunt direct invullen.</b> Wil je dat je Claude-tijd er al in staat? Klik op <b>Claude-tijd ophalen</b> en kies één keer de map <span class="mono">P21-tijdlog</span>. Daarna staat hij hier elke keer vanzelf.</div>
+    <div class="status">Zie je de map niet? Mac: druk in het venster op <b>Cmd + Shift + G</b>, typ <code>~/P21-tijdlog</code> en druk op Enter. Windows: typ <code>%USERPROFILE%\P21-tijdlog</code> in de adresbalk bovenin het venster.</div>
+  </div>
 
   <nav id="dagenbalk" class="dagenbalk" aria-label="Dagen" hidden></nav>
 
@@ -274,8 +285,8 @@ function knop(txt, fn){ const b = document.createElement("button"); b.type = "bu
 
 const S = {
   datum: isoDag(new Date()), werk:{s:510,e:1020}, lunch:{s:720,e:780},
-  claude:[{s:545,e:618,soort:"Klantwerk",tab:1},{s:560,e:640,soort:"Intern werk",tab:2},{s:785,e:872,soort:"Intern werk",tab:1},{s:930,e:975,soort:"Acquisitie",tab:1}],
-  rest:[], voorbeeld:true, sel:null, dirty:false, logRegels:[]
+  claude:[],
+  rest:[], voorbeeld:false, sel:null, dirty:false, logRegels:[]
 };
 let db = null;
 
@@ -575,7 +586,7 @@ function blokkenVoor(dag){
 }
 function wegVoorbeeld(){
   if(!S.voorbeeld) return;
-  S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null; $("voorbeeldMelding").hidden = true;
+  S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null;
 }
 /* De werkdag loopt standaard van 08:30 tot 17:00, maar wie eerder begint of langer doorwerkt ziet de hele dag. */
 function pasWerkdagAan(){
@@ -589,8 +600,33 @@ function zetLog(regels){
   S.logRegels = regels;
   const dagen = [...new Set(regels.map(x => isoDag(x.d)))].sort();
   if(!dagen.includes(S.datum) && dagen.length){ S.datum = dagen[dagen.length-1]; $("datum").value = S.datum; }
-  wegVoorbeeld();
+  wegVoorbeeld(); toonLaadkaart("ok", dagen.filter(d => d >= START).length);
   S.claude = blokkenVoor(S.datum); pasWerkdagAan(); S.rest = bouwRest([]); S.sel = null; S.dirty = true;
+}
+const LAADTEKST = $("voorbeeldMelding").innerHTML;
+function toonLaadkaart(toestand, n){
+  const k = $("voorbeeldMelding");
+  if(toestand === "ok"){ k.className = "laadkaart ok"; k.textContent = "✓ Je Claude-tijd van " + n + (n === 1 ? " dag" : " dagen") + " staat erin. Je ziet hem hieronder als donkerblauwe blokken."; }
+  else { k.className = "laadkaart"; k.innerHTML = toestand === "leeg" ? "<div><b>In die map staan geen tijdlog-bestanden.</b> Dat kan kloppen als je de plugin net hebt geïnstalleerd. Je kunt de dag ook gewoon zelf invullen.</div>" : LAADTEKST; }
+}
+let kiesHandle = null;
+const idb = () => new Promise((res, rej) => { const r = indexedDB.open("p21tijdlog", 1); r.onupgradeneeded = () => r.result.createObjectStore("h"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function bewaarHandle(h){ try{ const d = await idb(); d.transaction("h","readwrite").objectStore("h").put(h, "map"); }catch(_){} }
+async function haalHandle(){ try{ const d = await idb(); return await new Promise(res => { const q = d.transaction("h").objectStore("h").get("map"); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }catch(_){ return null; } }
+async function laadUitMap(h){
+  let regels = [];
+  try{ for await (const [naamBest, f] of h.entries()){ if(f.kind === "file" && /\.jsonl$/i.test(naamBest)){ try{ regels = regels.concat(leesLog(await (await f.getFile()).text())); }catch(_){} } } }catch(_){ return false; }
+  if(!regels.length){ toonLaadkaart("leeg"); return false; }
+  zetLog(regels); await laadOpgeslagen(); alles(); await ververstOpenDagen(); return true;
+}
+/* Eenmalig de map kiezen; daarna onthoudt de browser hem. Lukt dat niet (andere browser), dan kiest iemand bestanden. */
+async function ophalen(){
+  if(kiesHandle){ try{ if((await kiesHandle.requestPermission({mode:"read"})) === "granted" && await laadUitMap(kiesHandle)) return; }catch(_){} }
+  if(window.showDirectoryPicker){
+    try{ const h = await window.showDirectoryPicker({id:"p21tijdlog"}); kiesHandle = h; bewaarHandle(h); await laadUitMap(h); return; }
+    catch(e){ if(e && e.name === "AbortError") return; }
+  }
+  $("bestand").click();
 }
 async function bestanden(files){
   let regels = [];
@@ -676,10 +712,9 @@ async function wisselDag(dag){
 /* Dagen met Claude-tijd die nog niet zijn opgeslagen staan bovenaan, zodat je ze achteraf kunt invullen. */
 const opgeslagenDagen = new Set();
 async function ververstOpenDagen(){
-  if(S.voorbeeld || !S.logRegels) return;
-  const dagen = [...new Set(S.logRegels.map(x => isoDag(x.d)))];
   if(db && naamId()){
-    for(const d of dagen){
+    const nu = vandaagIso();
+    for(const d of dagenLijst().dagen.filter(d => d <= nu)){
       try{ const snap = await db.doc("dagen/" + naamId() + "/d/" + d).get(); if(snap.exists) opgeslagenDagen.add(d); else opgeslagenDagen.delete(d); }catch(_){}
     }
   }
@@ -687,30 +722,30 @@ async function ververstOpenDagen(){
 }
 const WEEKDAG = ["zo","ma","di","wo","do","vr","za"];
 const vandaagIso = () => isoDag(new Date());
-/* De balk toont alle dagen met Claude-tijd, vandaag en de twee dagen erna. Groen = opgeslagen, oranje = nog invullen. */
+/* De balk toont de werkdagen van de afgelopen week, vandaag en de twee dagen erna, ook als er nog geen Claude-tijd is geladen. */
+const START = "2026-10-26"; /* eerste dag van de meting */
 function dagenLijst(){
-  const nu = vandaagIso(), set = new Set(S.logRegels.map(x => isoDag(x.d)));
-  const eerste = [...set].sort()[0] || nu;
+  const nu = vandaagIso(), metLog = new Set(S.logRegels.map(x => isoDag(x.d)).filter(d => d >= START));
+  const begin = verschuif(nu,-9) < START ? START : verschuif(nu,-9);
   const res = [];
-  for(let d = eerste < verschuif(nu,-14) ? verschuif(nu,-14) : eerste; d <= verschuif(nu,2); d = verschuif(d,1)){
+  for(let d = begin; d <= verschuif(nu,2); d = verschuif(d,1)){
     const wd = new Date(d + "T12:00").getDay();
-    if(set.has(d) || d === S.datum || d === nu || (wd !== 0 && wd !== 6)) res.push(d);
+    if(metLog.has(d) || d === S.datum || d === nu || (wd !== 0 && wd !== 6)) res.push(d);
   }
-  return {dagen: res, metLog: set};
+  return {dagen: res, metLog};
 }
 function renderOpenDagen(){
   const box = $("dagenbalk");
-  box.hidden = S.voorbeeld; box.textContent = "";
-  if(S.voorbeeld) return;
-  const nu = vandaagIso(), {dagen, metLog} = dagenLijst();
+  box.hidden = false; box.textContent = "";
+  const nu = vandaagIso(), {dagen} = dagenLijst();
   dagen.forEach(d => {
-    const klaar = opgeslagenDagen.has(d) && !(d === S.datum && S.dirty), toekomst = d > nu;
+    const klaar = opgeslagenDagen.has(d) && !(d === S.datum && S.dirty), toekomst = d > nu, vandaag = d === nu;
     const k = document.createElement("button"); k.type = "button";
-    k.className = "dagchip " + (klaar ? "klaar" : metLog.has(d) && !toekomst ? "open" : "") + (toekomst ? " toekomst" : "") + (d === nu ? " nu" : "");
+    k.className = "dagchip " + (klaar ? "klaar" : toekomst ? "toekomst" : vandaag ? "" : "open") + (vandaag ? " vandaag" : "");
     if(d === S.datum) k.setAttribute("aria-current","true");
     const dt = new Date(d + "T12:00");
     k.appendChild(tekst("b", WEEKDAG[dt.getDay()] + " " + dt.getDate()));
-    k.appendChild(tekst("small", klaar ? "✓ opgeslagen" : toekomst ? (d === verschuif(nu,1) ? "morgen" : "overmorgen") : metLog.has(d) ? "nog invullen" : d === nu ? "vandaag" : "geen Claude-tijd"));
+    k.appendChild(tekst("small", klaar ? "✓ opgeslagen" : vandaag ? "vandaag" : toekomst ? (d === verschuif(nu,1) ? "morgen" : d === verschuif(nu,2) ? "overmorgen" : "later") : "nog invullen"));
     k.onclick = () => wisselDag(d);
     box.appendChild(k);
   });
@@ -718,7 +753,7 @@ function renderOpenDagen(){
 /* na opslaan: spring naar de volgende dag die nog open staat (eerst later, anders eerder) */
 function volgendeOpenDag(){
   const nu = vandaagIso(), {dagen, metLog} = dagenLijst();
-  const open = dagen.filter(d => d !== S.datum && d <= nu && metLog.has(d) && !opgeslagenDagen.has(d));
+  const open = dagen.filter(d => d !== S.datum && d <= nu && !opgeslagenDagen.has(d));
   return open.find(d => d > S.datum) || open[0] || null;
 }
 function alles(){ renderLijn(); renderPaneel(); renderStatus(); renderOpenDagen(); }
@@ -738,6 +773,7 @@ $("bestand").onchange = e => { const lijst = Array.from(e.target.files); if(lijs
 document.addEventListener("dragover", e => e.preventDefault());
 document.addEventListener("drop", e => { e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files.length) bestanden(e.dataTransfer.files); });
 $("opslaan").onclick = opslaan;
+$("laadKnop").onclick = ophalen;
 alles();
 
 /* bij openen: een eerder opgeslagen dag komt vanzelf terug */
@@ -746,6 +782,9 @@ alles();
     try{ db = await window.claude.use("db"); if(db) await laadOpgeslagen(); }catch(_){}
   }
   alles(); await ververstOpenDagen();
+  /* is de map al eens gekozen en mag hij nog gelezen worden, dan staat de Claude-tijd er vanzelf */
+  kiesHandle = await haalHandle();
+  if(kiesHandle){ try{ if((await kiesHandle.queryPermission({mode:"read"})) === "granted") await laadUitMap(kiesHandle); else $("laadKnop").textContent = "Claude-tijd ophalen (1 klik)"; }catch(_){} }
 })();
 })();
 </script>
