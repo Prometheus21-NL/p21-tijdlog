@@ -122,9 +122,9 @@ input[type=file]{display:none}
 </style>
 
 <style>
-:root{--acq:#E6E6E2;--acq-ink:#3A3D45;--acq-line:#CFCFC9;--on-klant:#FFFFFF}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}}
-:root[data-theme="dark"]{--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}
+:root{--acq:#E6E6E2;--acq-ink:#3A3D45;--acq-line:#CFCFC9;--on-klant:#FFFFFF;--pers:#EDE6FA;--pers-ink:#3F2A66;--pers-line:#C9B8E8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216;--pers:#3A2F55;--pers-ink:#EDE6FA;--pers-line:#6B5A93}}
+:root[data-theme="dark"]{--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216;--pers:#3A2F55;--pers-ink:#EDE6FA;--pers-line:#6B5A93}
 .wrap{max-width:1120px}
 .kop-rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .kop-rechts input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:150px}
@@ -149,7 +149,7 @@ input[type=file]{display:none}
 .keuze:hover{border-color:var(--ink)}
 .keuze[aria-pressed="true"]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
 .sw{width:16px;height:16px;border-radius:5px;flex:none;border:1px solid transparent}
-.sw.klant{background:var(--accent)}.sw.intern{background:var(--claude)}.sw.acq{background:var(--acq);border-color:var(--acq-line)}
+.sw.klant{background:var(--accent)}.sw.intern{background:var(--claude)}.sw.acq{background:var(--acq);border-color:var(--acq-line)}.sw.pers{background:var(--pers);border-color:var(--pers-line)}
 .sw.pauze{background:repeating-linear-gradient(135deg,transparent 0 3px,var(--pauze) 3px 5px);border-color:var(--pauze)}
 .split{position:absolute;left:0;right:0;height:22px;transform:translateY(-11px);cursor:ns-resize;touch-action:none;z-index:3;display:flex;align-items:center;justify-content:center}
 .split::before{content:"";position:absolute;left:0;right:0;top:10px;border-top:3px solid var(--ink);border-radius:2px}
@@ -158,6 +158,7 @@ input[type=file]{display:none}
 .blok.c-klant{background:var(--accent);color:var(--on-klant);border-color:var(--accent)}
 .blok.c-intern{background:var(--claude);color:var(--claude-ink);border-color:var(--claude)}
 .blok.c-acq{background:var(--acq);color:var(--acq-ink);border-color:var(--acq-line)}
+.blok.c-pers{background:var(--pers);color:var(--pers-ink);border-color:var(--pers-line)}
 .blok.leeg{background:transparent;color:var(--claude);border:1.5px dashed var(--claude)}
 .blok{transition:background-color .15s,color .15s}
 .rand{position:absolute;left:0;right:0;height:10px;cursor:ns-resize;touch-action:none;opacity:0;z-index:2}
@@ -227,7 +228,7 @@ input[type=file]{display:none}
   <details class="privacy">
     <summary>Wat wordt er bijgehouden, en wat niet?</summary>
     <ul>
-      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk of Acquisitie.</li>
+      <li><b>Wel:</b> je voornaam, van hoe laat tot hoe laat je werkte en voor welk soort werk: Klantwerk, Intern werk, Acquisitie of Persoonlijk (iets privé of voor school dat tussen je werk kwam).</li>
       <li><b>Niet:</b> wat je tegen Claude typt of wat Claude antwoordt, wat er in een document of mail staat, of namen van klanten of projecten. Uit je agenda komen alleen de begin- en eindtijden van afspraken, nooit de titels.</li>
       <li>De plugin stuurt zelf het tijdstip, de soort handeling en een willekeurig sessienummer naar de eigen database van Prometheus21, zodat je dag hier klaarstaat. Pas als jij op Dag opslaan klikt, wordt je dag bewaard met het soort werk dat jij koos.</li>
       <li>Dit scherm laat alleen de dag van de gekozen naam zien. Rinse leest de opgeslagen dagen. In het onderzoeksverslag komen alleen totalen, nooit één persoon of één dag.</li>
@@ -268,9 +269,9 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 const PX = 1.4, MIN = 5;
-const CATS = ["Klantwerk","Intern werk","Acquisitie"];
+const CATS = ["Klantwerk","Intern werk","Acquisitie","Persoonlijk"];
 const CATS_REST = CATS.concat(["Pauze"]);
-const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Pauze":"pauze"};
+const KLEUR = {"Klantwerk":"klant","Intern werk":"intern","Acquisitie":"acq","Persoonlijk":"pers","Pauze":"pauze"};
 let onthoud = {}; // map -> {soort}, alleen in deze browser
 let naam = "";
 try{ onthoud = JSON.parse(localStorage.getItem("p21tijdlog") || "{}") || {}; naam = localStorage.getItem("p21naam") || ""; }catch(_){}
@@ -627,7 +628,7 @@ function blokkenVoor(dag){
       if(l && x.s - l.e <= 15){ l.e = Math.max(l.e, x.e); } else blokken.push({s:x.s, e:x.e});
     });
     const gekozen = ev.filter(x => x.e === "soort").pop();
-    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie"})[gekozen.v] || null : null}));
+    if(blokken.length) sessies.push(Object.assign(blokken, {soort: gekozen ? ({klant:"Klantwerk",intern:"Intern werk",acquisitie:"Acquisitie",persoonlijk:"Persoonlijk"})[gekozen.v] || null : null}));
   });
   /* tabnummers op volgorde van eerste gebruik; elke tab houdt zijn eigen blokken, ook als ze tegelijk lopen */
   sessies.sort((a,b) => a[0].s - b[0].s);
