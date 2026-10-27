@@ -130,7 +130,12 @@ input[type=file]{display:none}
 .kop-rechts input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:150px}
 .lijnwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}
 .lijn{display:block;grid-template-columns:none;position:relative}
-.baan{position:absolute;left:56px;right:0;top:0;bottom:0;border-left:1px solid var(--line)}
+.baan{position:absolute;left:56px;right:104px;top:0;bottom:0;border-left:1px solid var(--line)}
+.agendabaan{position:absolute;right:0;width:96px;top:0;bottom:0;border-left:1px dashed var(--line)}
+.agendabaan::before{content:"agenda";position:absolute;top:-16px;left:6px;font-size:10.5px;color:var(--muted);letter-spacing:.04em}
+.ag{position:absolute;border-radius:6px;padding:2px 5px;font-size:10.5px;line-height:1.2;overflow:hidden;background:var(--surface);border:1px solid var(--muted);color:var(--ink)}
+.ag.lang{background:repeating-linear-gradient(135deg,transparent 0 5px,var(--line) 5px 7px);border-style:dashed;color:var(--muted)}
+.ag .t{display:block;font-family:var(--font-mono);font-size:10px;opacity:.8}
 .uur{left:0;width:46px;right:auto;text-align:right}
 .zij{position:relative}
 .paneel{position:absolute;left:0;right:0;top:0;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
@@ -429,6 +434,38 @@ function blokEl(cls, b, titel, sub, sel, baanInfo){
   return el;
 }
 /* tabs die tegelijk liepen komen naast elkaar te staan */
+/* naast elkaar plaatsen van afspraken die tegelijk lopen (zelfde idee als rijenVoor, voor een losse lijst) */
+function lanesVoor(lijst){
+  const idx = lijst.map((b,i) => i).sort((a,b) => lijst[a].s - lijst[b].s);
+  const res = new Array(lijst.length); let groep = [], groepEind = -1, baanEind = [];
+  const sluit = () => { const n = baanEind.length; groep.forEach(i => { res[i].n = n; }); groep = []; baanEind = []; };
+  idx.forEach(i => {
+    const b = lijst[i];
+    if(b.s >= groepEind && groep.length) sluit();
+    let l = baanEind.findIndex(e => e <= b.s); if(l < 0){ l = baanEind.length; baanEind.push(0); }
+    baanEind[l] = b.e; groepEind = Math.max(groepEind, b.e);
+    res[i] = {i:l, n:1}; groep.push(i);
+  });
+  sluit();
+  return res;
+}
+/* Afspraken uit je agenda staan in een eigen kolom rechts, zodat Claude-blokken ze nooit bedekken */
+function renderAgenda(L){
+  const ag = agendaVandaag().filter(a => a.e > S.werk.s && a.s < S.werk.e);
+  if(!ag.length) return;
+  const kol = document.createElement("div"); kol.className = "agendabaan"; L.appendChild(kol);
+  const rijen = lanesVoor(ag);
+  ag.forEach((a,i) => {
+    const el = document.createElement("div"); el.className = "ag" + (a.l ? " lang" : "");
+    const top = (Math.max(a.s,S.werk.s) - S.werk.s) * PX, h = Math.max((Math.min(a.e,S.werk.e) - Math.max(a.s,S.werk.s)) * PX - 2, 12);
+    el.style.top = top + "px"; el.style.height = h + "px";
+    const n = rijen[i].n; el.style.left = "calc(" + rijen[i].i + " * (100% - 4px) / " + n + " + 2px)"; el.style.width = "calc((100% - 4px) / " + n + " - 2px)";
+    el.appendChild(tekst("span", a.l ? "Lang blok" : "Afspraak"));
+    if(h > 26) el.appendChild(tekst("span", fmt(a.s) + "–" + fmt(a.e), "t"));
+    el.title = (a.l ? "Lang blok in je agenda " : "Afspraak in je agenda ") + fmt(a.s) + "–" + fmt(a.e);
+    kol.appendChild(el);
+  });
+}
 function rijenVoor(){
   const idx = S.claude.map((b,i) => i).sort((a,b) => S.claude[a].s - S.claude[b].s);
   const res = new Array(S.claude.length); let groep = [], groepEind = -1, baanEind = [];
@@ -451,6 +488,7 @@ function renderLijn(){
     const r = document.createElement("div"); r.className = "raster"; r.style.top = ((m - S.werk.s) * PX) + "px"; L.appendChild(r);
   }
   const baan = document.createElement("div"); baan.className = "baan"; L.appendChild(baan);
+  renderAgenda(L);
   const isSel = (t,i) => S.sel && S.sel.t === t && S.sel.i === i;
   const tijd = b => fmt(b.s) + "–" + fmt(b.e);
   const rijen = rijenVoor();
