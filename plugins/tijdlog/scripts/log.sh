@@ -58,7 +58,7 @@ printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$dag.jsonl" 2>
 if [ "$e" = vraag ] && [ -n "$sid" ] && [ ! -f "$dir/gevraagd-$sid" ]; then
   : > "$dir/gevraagd-$sid" 2>/dev/null
   soort="$(cd "$(dirname "$0")" && pwd)/soort.sh"
-  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen. Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets."}}' "$soort" "$sid"
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen. Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets. Sluit je antwoord op deze eerste vraag af met een eigen regel: Tijdlog invullen (2 minuten): https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j"}}' "$soort" "$sid"
   exit 0
 fi
 
@@ -71,7 +71,7 @@ if [ "$e" != einde ] && [ "$nu" -ge 1645 ] && [ ! -f "$dir/herinnerd-$dag" ] && 
     osascript -e 'display notification "Typ /tijdlog:dag in Claude Code. Duurt 2 minuten." with title "P21 Tijdlog"' >/dev/null 2>&1 &
   fi
   if [ "$e" = vraag ]; then
-    printf '%s' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: het is na 16:45 en de gebruiker heeft de werkdag nog niet afgesloten. Beantwoord eerst de vraag en wijs er daarna in één zin op dat /tijdlog:dag typen 2 minuten kost. Lees niets uit het logbestand."}}'
+    printf '%s' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: het is na 16:45 en de gebruiker heeft de werkdag nog niet afgesloten. Beantwoord eerst de vraag en wijs er daarna in één zin op dat het invullen 2 minuten kost en zet de link op een eigen regel: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j Lees niets uit het logbestand."}}'
   fi
 fi
 exit 0

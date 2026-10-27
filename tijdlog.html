@@ -159,7 +159,28 @@ input[type=file]{display:none}
 .paneel .tijden{display:flex;gap:10px;margin:0 0 12px}
 .paneel .tijden label{display:flex;flex-direction:column;gap:3px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .paneel .tijden input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 7px;font-family:var(--font-mono);font-size:13px;color:var(--ink)}
-.opslaanrij{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.opslaanrij{display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center;justify-content:space-between;position:sticky;bottom:0;z-index:15;background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:14px 18px;box-shadow:0 -6px 24px rgba(0,0,0,.10)}
+.opslaanrij.open{border-color:var(--accent)}
+.opslaanrij.ok{border-color:var(--zelf);background:var(--zelf-soft)}
+.opslaanrij .tekstkant{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}
+.opslaanrij .groot{font-size:17px;font-weight:700;letter-spacing:0}
+.opslaanrij.ok .groot{color:var(--zelf)}
+.opslaanrij.open .groot{color:var(--accent-ink)}
+.knop.opslaan-groot{font-size:19px;font-weight:800;padding:16px 36px;border-radius:12px;flex:0 0 auto;min-width:220px}
+.knop.opslaan-groot:disabled{background:var(--line);border-color:var(--line);color:var(--muted)}
+.opslaanrij.ok .knop.opslaan-groot{background:var(--zelf);border-color:var(--zelf)}
+@media (max-width:640px){.knop.opslaan-groot{width:100%}}
+.dagenbalk{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.dagchip{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:74px;padding:7px 10px;border-radius:10px;border:2px solid var(--line);background:var(--surface);font-size:13px;line-height:1.25}
+.dagchip b{font-size:14px}
+.dagchip small{font-size:11.5px;color:var(--muted)}
+.dagchip.open{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.dagchip.open small{color:var(--accent-ink)}
+.dagchip.klaar{border-color:var(--zelf);background:var(--zelf-soft);color:var(--zelf)}
+.dagchip.klaar small{color:var(--zelf)}
+.dagchip.toekomst{border-style:dashed}
+.dagchip.nu{box-shadow:0 0 0 2px var(--ink) inset}
+.dagchip[aria-current="true"]{outline:3px solid var(--ink);outline-offset:1px}
 @media (max-width:640px){
   .lijnwrap{grid-template-columns:minmax(0,1fr)}
   .zij{position:static}
@@ -197,14 +218,16 @@ input[type=file]{display:none}
     </ul>
   </details>
 
-  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Klik op <b>Tijdlog laden</b> en kies het bestand van je dag uit de map <span class="mono">P21-tijdlog</span>.</div>
+  <div id="voorbeeldMelding" class="melding">Je ziet nu een <b>voorbeelddag</b>. Klik op <b>Tijdlog laden</b> en kies de bestanden van je dagen (selecteer er gerust meer dan één) uit de map <span class="mono">P21-tijdlog</span>.</div>
+
+  <nav id="dagenbalk" class="dagenbalk" aria-label="Dagen" hidden></nav>
 
   <section class="kaart" aria-labelledby="dagTitel">
     <div class="rij" style="justify-content:space-between;align-items:baseline;margin-bottom:6px">
       <h2 id="dagTitel" style="margin:0">Dag</h2>
       <div class="rij" style="gap:8px;align-items:center">
         <span class="label">Werkdag</span>
-        <input id="werkS" class="mono" type="time" step="900" aria-label="Begin werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
+        <input id="werkS" class="mono" type="time" step="900" aria-label="Begin werkdag" min="00:00" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
         <span class="label">tot</span>
         <input id="werkE" class="mono" type="time" step="900" aria-label="Einde werkdag" style="border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px">
       </div>
@@ -216,9 +239,12 @@ input[type=file]{display:none}
     </div>
   </section>
 
-  <div class="opslaanrij">
-    <span id="opslaanStatus" class="status">Nog niet opgeslagen</span>
-    <button id="opslaan" class="knop hoofd" type="button">Dag opslaan</button>
+  <div id="opslaanrij" class="opslaanrij">
+    <div class="tekstkant">
+      <span id="opslaanStatus" class="groot">Nog niet opgeslagen</span>
+      <span id="opslaanHulp" class="status">Er wordt niets bewaard voordat je op de knop klikt.</span>
+    </div>
+    <button id="opslaan" class="knop hoofd opslaan-groot" type="button">Dag opslaan</button>
   </div>
 </div>
 <script>
@@ -237,6 +263,7 @@ const naamId = () => naam.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
 const fmt = m => pad(Math.floor(m/60)) + ":" + pad(Math.round(m%60));
+const tv = m => m >= 1440 ? "23:59" : fmt(m); /* een tijdveld kent geen 24:00 */
 const parseT = s => { const [h,m] = (s||"0:0").split(":").map(Number); return h*60 + m; };
 const isoDag = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
 const verschuif = (dag, n) => { const d = new Date(dag + "T12:00:00"); d.setDate(d.getDate()+n); return isoDag(d); };
@@ -550,18 +577,26 @@ function wegVoorbeeld(){
   if(!S.voorbeeld) return;
   S.voorbeeld = false; S.claude = []; S.rest = []; S.sel = null; $("voorbeeldMelding").hidden = true;
 }
+/* De werkdag loopt standaard van 08:30 tot 17:00, maar wie eerder begint of langer doorwerkt ziet de hele dag. */
+function pasWerkdagAan(){
+  if(!S.claude.length) return;
+  const eerst = Math.min(...S.claude.map(b => b.s)), laatst = Math.max(...S.claude.map(b => b.e));
+  S.werk.s = Math.max(0, Math.min(510, Math.floor(eerst/30)*30));
+  S.werk.e = Math.min(1440, Math.max(1020, Math.ceil(laatst/30)*30));
+  $("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
+}
 function zetLog(regels){
   S.logRegels = regels;
   const dagen = [...new Set(regels.map(x => isoDag(x.d)))].sort();
   if(!dagen.includes(S.datum) && dagen.length){ S.datum = dagen[dagen.length-1]; $("datum").value = S.datum; }
   wegVoorbeeld();
-  S.claude = blokkenVoor(S.datum); S.rest = bouwRest([]); S.sel = null; S.dirty = true;
+  S.claude = blokkenVoor(S.datum); pasWerkdagAan(); S.rest = bouwRest([]); S.sel = null; S.dirty = true;
 }
 async function bestanden(files){
   let regels = [];
   for(const f of files) regels = regels.concat(leesLog(await f.text()));
-  if(!regels.length){ $("opslaanStatus").textContent = "In dit bestand staan geen tijdlog-regels."; return; }
-  zetLog(regels); await laadOpgeslagen(); alles();
+  if(!regels.length){ zetBalk("open", "In dit bestand staan geen tijdlog-regels.", "Kies een bestand uit de map P21-tijdlog."); return; }
+  zetLog(regels); await laadOpgeslagen(); alles(); await ververstOpenDagen();
 }
 
 /* ---------- totalen, opslaan, laden ---------- */
@@ -578,28 +613,39 @@ function totalen(){
   Object.keys(cat).forEach(k => { cat[k] = Math.round(cat[k]); });
   return {cat};
 }
+function zetBalk(toestand, groot, hulp){
+  const r = $("opslaanrij"); r.className = "opslaanrij" + (toestand ? " " + toestand : "");
+  $("opslaanStatus").textContent = groot; if(hulp !== undefined) $("opslaanHulp").textContent = hulp;
+}
 function renderStatus(){
   const k = $("opslaan");
   k.disabled = S.voorbeeld || !db || !naamId();
-  if(!db) $("opslaanStatus").textContent = "Opslaan kan alleen als je deze pagina in Claude opent.";
-  else if(S.voorbeeld) $("opslaanStatus").textContent = "Laad eerst je tijdlog.";
-  else if(!naamId()) $("opslaanStatus").textContent = "Vul je voornaam in om op te slaan.";
-  else if(S.dirty) $("opslaanStatus").textContent = "Niet opgeslagen wijzigingen";
+  if(!db) zetBalk("", "Opslaan kan alleen als je dit scherm in Claude opent.", "");
+  else if(S.voorbeeld) zetBalk("", "Laad eerst je tijdlog.", "Klik bovenaan op Tijdlog laden.");
+  else if(!naamId()) zetBalk("open", "Vul bovenaan je voornaam in.", "Zonder naam kan ik je dag niet opslaan.");
+  else if(S.dirty){ S.net = null; zetBalk("open", "Nog niet opgeslagen", "Klik op de knop. Pas daarna is je dag goed doorgekomen."); }
+  else if(S.net) zetBalk("ok", S.net.groot, S.net.hulp);
+  else if(opgeslagenDagen.has(S.datum)) zetBalk("ok", "✓ Deze dag is opgeslagen", "Pas je nog iets aan? Klik dan opnieuw op Dag opslaan.");
+  else zetBalk("open", "Nog niet opgeslagen", "Kijk of alles klopt en klik dan op de knop.");
 }
 async function opslaan(){
   if(!db || !naamId() || S.voorbeeld) return;
-  const k = $("opslaan"); k.disabled = true; $("opslaanStatus").textContent = "Bezig met opslaan…";
+  const k = $("opslaan"); k.disabled = true; zetBalk("open", "Bezig met opslaan…", "");
   const blokken = [];
   S.claude.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"claude",soort:b.soort||"",tab:b.tab||0}));
   S.rest.forEach(b => blokken.push({van:fmt(b.s),tot:fmt(b.e),bron:"zelf",soort:b.soort||""}));
   try{
     await db.doc("dagen/" + naamId()).set({naam, laatst:S.datum});
     await db.doc("dagen/" + naamId() + "/d/" + S.datum).set({naam, datum:S.datum, werkdag:{van:fmt(S.werk.s),tot:fmt(S.werk.e)}, blokken, totalen:totalen(), opgeslagen:new Date().toISOString()});
-    S.dirty = false;
-    $("opslaanStatus").textContent = "Opgeslagen om " + new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+    S.dirty = false; opgeslagenDagen.add(S.datum);
+    const tijdNu = new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+    const volgende = volgendeOpenDag();
+    S.net = {groot:"✓ Opgeslagen om " + tijdNu, hulp: volgende ? "Goed gedaan. Ik ga naar de volgende dag die nog open staat." : "Alles is opgeslagen. Je bent klaar en kunt dit scherm sluiten."};
+    zetBalk("ok", S.net.groot, S.net.hulp);
+    renderOpenDagen();
+    if(volgende) setTimeout(async () => { if(!S.dirty) { await wisselDag(volgende); } }, 1400);
   }catch(err){
-    $("opslaanStatus").textContent = err && err.code === "invalid_argument" ? "Opslaan mag niet met jouw toegang. Vraag Rinse om je als Bijdrager toe te voegen." :
-      err && err.code === "quota_exceeded" ? "De opslag is vol. Laat het Rinse weten." : "Opslaan lukte niet. Probeer het opnieuw.";
+    zetBalk("open", err && err.code === "invalid_argument" ? "Opslaan mag niet met jouw toegang." : err && err.code === "quota_exceeded" ? "De opslag is vol." : "Opslaan lukte niet.", err && err.code === "invalid_argument" ? "Vraag Rinse om je als Bijdrager toe te voegen." : err && err.code === "quota_exceeded" ? "Laat het Rinse weten." : "Probeer het opnieuw.");
   }finally{ renderStatus(); }
 }
 async function laadOpgeslagen(){
@@ -611,36 +657,84 @@ async function laadOpgeslagen(){
     if(!bl.some(b => b.bron === "claude" || b.bron === "zelf")) return false;
     wegVoorbeeld();
     S.werk = {s:parseT(d.werkdag && d.werkdag.van), e:parseT(d.werkdag && d.werkdag.tot)};
-    $("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
+    $("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
     const lees = b => ({s:parseT(b.van), e:parseT(b.tot), soort:goed(b.soort)});
     S.claude = bl.filter(b => b.bron === "claude").map(b => Object.assign(lees(b), {tab:b.tab||0}));
     S.rest = bl.filter(b => b.bron === "zelf").map(lees);
     S.dirty = false; S.sel = null;
-    $("opslaanStatus").textContent = "Deze dag is al opgeslagen. Wijzigingen? Klik opnieuw op Dag opslaan.";
+    opgeslagenDagen.add(S.datum);
     return true;
   }catch(_){ return false; }
 }
 async function wisselDag(dag){
-  S.datum = dag; $("datum").value = dag; S.sel = null;
-  if(!S.voorbeeld){ S.claude = blokkenVoor(dag); S.rest = bouwRest([]); S.dirty = false; $("opslaanStatus").textContent = "Nog niet opgeslagen"; }
+  S.datum = dag; $("datum").value = dag; S.sel = null; S.net = null;
+  if(!S.voorbeeld){ S.claude = blokkenVoor(dag); pasWerkdagAan(); S.rest = bouwRest([]); S.dirty = !opgeslagenDagen.has(dag); }
   await laadOpgeslagen();
   alles();
 }
 
-function alles(){ renderLijn(); renderPaneel(); renderStatus(); }
+/* Dagen met Claude-tijd die nog niet zijn opgeslagen staan bovenaan, zodat je ze achteraf kunt invullen. */
+const opgeslagenDagen = new Set();
+async function ververstOpenDagen(){
+  if(S.voorbeeld || !S.logRegels) return;
+  const dagen = [...new Set(S.logRegels.map(x => isoDag(x.d)))];
+  if(db && naamId()){
+    for(const d of dagen){
+      try{ const snap = await db.doc("dagen/" + naamId() + "/d/" + d).get(); if(snap.exists) opgeslagenDagen.add(d); else opgeslagenDagen.delete(d); }catch(_){}
+    }
+  }
+  renderOpenDagen();
+}
+const WEEKDAG = ["zo","ma","di","wo","do","vr","za"];
+const vandaagIso = () => isoDag(new Date());
+/* De balk toont alle dagen met Claude-tijd, vandaag en de twee dagen erna. Groen = opgeslagen, oranje = nog invullen. */
+function dagenLijst(){
+  const nu = vandaagIso(), set = new Set(S.logRegels.map(x => isoDag(x.d)));
+  const eerste = [...set].sort()[0] || nu;
+  const res = [];
+  for(let d = eerste < verschuif(nu,-14) ? verschuif(nu,-14) : eerste; d <= verschuif(nu,2); d = verschuif(d,1)){
+    const wd = new Date(d + "T12:00").getDay();
+    if(set.has(d) || d === S.datum || d === nu || (wd !== 0 && wd !== 6)) res.push(d);
+  }
+  return {dagen: res, metLog: set};
+}
+function renderOpenDagen(){
+  const box = $("dagenbalk");
+  box.hidden = S.voorbeeld; box.textContent = "";
+  if(S.voorbeeld) return;
+  const nu = vandaagIso(), {dagen, metLog} = dagenLijst();
+  dagen.forEach(d => {
+    const klaar = opgeslagenDagen.has(d) && !(d === S.datum && S.dirty), toekomst = d > nu;
+    const k = document.createElement("button"); k.type = "button";
+    k.className = "dagchip " + (klaar ? "klaar" : metLog.has(d) && !toekomst ? "open" : "") + (toekomst ? " toekomst" : "") + (d === nu ? " nu" : "");
+    if(d === S.datum) k.setAttribute("aria-current","true");
+    const dt = new Date(d + "T12:00");
+    k.appendChild(tekst("b", WEEKDAG[dt.getDay()] + " " + dt.getDate()));
+    k.appendChild(tekst("small", klaar ? "✓ opgeslagen" : toekomst ? (d === verschuif(nu,1) ? "morgen" : "overmorgen") : metLog.has(d) ? "nog invullen" : d === nu ? "vandaag" : "geen Claude-tijd"));
+    k.onclick = () => wisselDag(d);
+    box.appendChild(k);
+  });
+}
+/* na opslaan: spring naar de volgende dag die nog open staat (eerst later, anders eerder) */
+function volgendeOpenDag(){
+  const nu = vandaagIso(), {dagen, metLog} = dagenLijst();
+  const open = dagen.filter(d => d !== S.datum && d <= nu && metLog.has(d) && !opgeslagenDagen.has(d));
+  return open.find(d => d > S.datum) || open[0] || null;
+}
+function alles(){ renderLijn(); renderPaneel(); renderStatus(); renderOpenDagen(); }
 
 /* ---------- start ---------- */
 $("datum").value = S.datum; $("naam").value = naam;
-$("werkS").value = fmt(S.werk.s); $("werkE").value = fmt(S.werk.e);
+$("werkS").value = tv(S.werk.s); $("werkE").value = tv(S.werk.e);
 $("vorige").onclick = () => wisselDag(verschuif(S.datum,-1));
 $("volgende").onclick = () => wisselDag(verschuif(S.datum,1));
 $("vandaag").onclick = () => wisselDag(isoDag(new Date()));
 $("datum").onchange = e => { if(e.target.value) wisselDag(e.target.value); };
-$("naam").onchange = async e => { naam = e.target.value.trim(); bewaar(); await laadOpgeslagen(); alles(); };
+$("naam").onchange = async e => { naam = e.target.value.trim(); bewaar(); await laadOpgeslagen(); alles(); await ververstOpenDagen(); };
 const nieuweWerkdag = () => { S.rest = bouwRest(S.rest); S.dirty = !S.voorbeeld; S.sel = null; alles(); };
 $("werkS").onchange = e => { const v = parseT(e.target.value); if(v < S.werk.e){ S.werk.s = v; nieuweWerkdag(); } };
-$("werkE").onchange = e => { const v = parseT(e.target.value); if(v > S.werk.s){ S.werk.e = v; nieuweWerkdag(); } };
-$("bestand").onchange = e => { if(e.target.files.length) bestanden(e.target.files); e.target.value = ""; };
+$("werkE").onchange = e => { let v = parseT(e.target.value); if(v >= 1439) v = 1440; if(v > S.werk.s){ S.werk.e = v; nieuweWerkdag(); } };
+$("bestand").onchange = e => { const lijst = Array.from(e.target.files); if(lijst.length) bestanden(lijst); e.target.value = ""; };
 document.addEventListener("dragover", e => e.preventDefault());
 document.addEventListener("drop", e => { e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files.length) bestanden(e.dataTransfer.files); });
 $("opslaan").onclick = opslaan;
@@ -651,7 +745,7 @@ alles();
   if(window.claude && window.claude.use){
     try{ db = await window.claude.use("db"); if(db) await laadOpgeslagen(); }catch(_){}
   }
-  alles();
+  alles(); await ververstOpenDagen();
 })();
 })();
 </script>
