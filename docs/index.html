@@ -294,11 +294,13 @@ let db = null;
 const serverAgenda = {};
 function agendaVandaag(){ return serverAgenda[S.datum] || []; }
 function knipPunten(bs, be){
-  const ag = agendaVandaag().reduce((l,a) => l.concat([a.s, a.e]), []);
+  const ag = agendaVandaag().filter(a => !a.l).reduce((l,a) => l.concat([a.s, a.e]), []);
   const punten = [S.lunch.s, S.lunch.e].concat(ag).filter(x => x > bs && x < be);
   return [bs].concat(Array.from(new Set(punten)).sort((a,b) => a - b), [be]);
 }
-function isAfspraak(b){ const m = (b.s + b.e) / 2; return agendaVandaag().some(a => m >= a.s && m < a.e); }
+function isAfspraak(b){ const m = (b.s + b.e) / 2; return agendaVandaag().some(a => !a.l && m >= a.s && m < a.e); }
+/* Een lang blok (6 uur of meer, bv. een hele dag bij een klant) knipt de dag niet op, maar laat wel zien dat je agenda bezet is */
+function langBlok(b){ const m = (b.s + b.e) / 2; return agendaVandaag().find(a => a.l && m >= a.s && m < a.e); }
 
 /* ---------- opbouw van de dag ---------- */
 /* Alles wat geen Claude-tijd is, wordt een blok dat de gebruiker kan invullen en splitsen. Lunch staat standaard op Pauze. */
@@ -459,7 +461,7 @@ function renderLijn(){
     el.onclick = () => kies({t:"claude",i}); baan.appendChild(el); });
   S.rest.forEach((b,i) => {
     const cls = !b.soort ? "gat" : b.soort === "Pauze" ? "pauze" : "c-" + KLEUR[b.soort];
-    const el = blokEl(cls, b, b.soort || (isAfspraak(b) ? "Afspraak in je agenda: kies soort werk" : "Wat deed je hier?"), tijd(b), isSel("rest",i));
+    const el = blokEl(cls, b, b.soort || (isAfspraak(b) ? "Afspraak in je agenda: kies soort werk" : langBlok(b) ? "Lang blok in je agenda (" + fmt(langBlok(b).s) + "–" + fmt(langBlok(b).e) + "): kies soort werk" : "Wat deed je hier?"), tijd(b), isSel("rest",i));
     ["boven","onder"].forEach(k => { const h = document.createElement("span"); h.className = "rand " + k; h.setAttribute("aria-hidden","true"); h.onpointerdown = ev => startRestResize(ev, i, k); h.onclick = ev => ev.stopPropagation(); el.appendChild(h); });
     el.onclick = () => kies({t:"rest",i}); baan.appendChild(el); });
   S.rest.forEach((a,i) => { const c = S.rest[i+1]; if(c && a.e === c.s) baan.appendChild(handleEl(i)); });
