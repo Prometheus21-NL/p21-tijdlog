@@ -5,7 +5,7 @@ Voor het stage-onderzoek van Rinse (oktober–november 2026).
 
 ## Wat wordt bijgehouden
 
-Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datum>.jsonl`):
+Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datum>.jsonl`). Sinds versie 1.10.0 stuurt de plugin diezelfde regels ook zelf, samen met je voornaam, naar de eigen Supabase-database van Prometheus21, zodat je dag in het invulscherm klaarstaat:
 
 | Wel | Niet |
 |---|---|
@@ -14,7 +14,7 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 | je antwoord op de beginvraag: klant, intern of acquisitie (alleen die drie woorden) | |
 | een willekeurig sessienummer per tab (geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
-De tijdlog leest nooit wat je typt. Het bestand blijft op je computer. Er wordt niets automatisch verstuurd.
+De tijdlog leest nooit wat je typt. Het bestand blijft op je computer en een kopie van deze regels gaat naar de database. Wat je typt, wat Claude antwoordt en wat er in bestanden of mails staat, gaat nooit mee.
 Bij de eerste vraag van elke chat vraagt Claude waarvoor de chat is. Dat antwoord vult het invulscherm vooraf in. In het invulscherm kun je het altijd aanpassen en kies je zelf per blok: Klantwerk, Intern werk of Acquisitie. Namen van klanten of projecten worden niet gevraagd. Je agenda wordt niet gelezen.
 
 ## Installeren (1 regel)
@@ -42,11 +42,7 @@ Werk je met meerdere mensen op dezelfde computer en dezelfde inlog van het bestu
 
 ## Aan het eind van de dag (2 minuten)
 
-Om 16:45 krijg je op een Mac een melding op je scherm. Op elk systeem herinnert Claude je er in je volgende gesprek aan (één keer per dag, en alleen als je de dag nog niet hebt afgesloten). Typ in Claude Code: `/tijdlog:dag`. Claude laat dan de link naar het invulscherm zien en zegt wat je moet doen:
-
-1. Open het [invulscherm](https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j).
-2. Klik op Tijdlog laden en kies het bestand van vandaag uit de map `P21-tijdlog` in je thuismap. Vul je voornaam in.
-3. Kies bij de gestippelde blokken wat voor werk het was en klik op Dag opslaan.
+Om 16:45 staat er een agenda-afspraak en komt er een herinneringsmail, allebei met de link naar het invulscherm. Open de link, kies rechtsboven je naam (eenmalig), kijk of je dag klopt en klik op de grote knop "Dag opslaan". Je hoeft geen bestanden te zoeken: de plugin heeft je Claude-tijd al klaargezet. De dagenbalk bovenaan laat zien welke dagen nog open staan, zodat je ook eerdere dagen kunt invullen.
 
 Liever in de chat? Zeg dat tegen Claude, dan stelt hij de vragen en krijg je een blokje dat je naar Rinse mailt.
 
@@ -61,7 +57,7 @@ Liever in de chat? Zeg dat tegen Claude, dan stelt hij de vragen en krijg je een
 
 ## Een chat of map uitsluiten (alleen voor wie geen werknemer is)
 
-Hoort bepaald werk niet in de tijdlog thuis, bijvoorbeeld schoolwerk van een stagiair? Leg dan een leeg bestand met de naam `.geen-tijdlog` in de map waarin je die chats opent (`touch .geen-tijdlog`). Chats in die map, of een map eronder, worden dan niet bijgehouden en Claude stelt er ook de beginvraag niet. De plugin kijkt alleen of het bestand bestaat; de map wordt nergens bewaard. Verwijder het bestand om weer mee te tellen. Wie dit niet aanmaakt, merkt er niets van.
+Hoort bepaald werk niet in de tijdlog thuis, bijvoorbeeld schoolwerk van een stagiair? (Chats in zo'n map worden ook niet naar de database gestuurd.) Leg dan een leeg bestand met de naam `.geen-tijdlog` in de map waarin je die chats opent (`touch .geen-tijdlog`). Chats in die map, of een map eronder, worden dan niet bijgehouden en Claude stelt er ook de beginvraag niet. De plugin kijkt alleen of het bestand bestaat; de map wordt nergens bewaard. Verwijder het bestand om weer mee te tellen. Wie dit niet aanmaakt, merkt er niets van.
 
 ## Verwijderen
 

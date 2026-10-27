@@ -3,9 +3,9 @@ description: Sluit je werkdag af: open het invulscherm en kies per blok Klantwer
 ---
 Standaard vult de gebruiker de dag in via het invulscherm. Zeg dit, in gewoon Nederlands en kort, en stop daarna (doe de stappen hieronder alleen als de gebruiker uitdrukkelijk liever in de chat invult):
 
-1. Open dit scherm: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j
-2. Klik op "Tijdlog laden" en kies het bestand van vandaag in de map P21-tijdlog in je thuismap (het heet `JJJJ-MM-DD.jsonl`, met de datum van vandaag). Vul bovenin je voornaam in.
-3. Klik op de blokken die nog gestippeld zijn en kies Klantwerk, Intern werk, Acquisitie of Pauze. Klik daarna op "Dag opslaan".
+1. Open de link uit de herinneringsmail of uit de agenda-afspraak "Tijdlog invullen" van 16:45. Die link bevat de teamcode.
+2. Kies rechtsboven je naam (eenmalig). Je Claude-tijd staat er dan al in, de plugin heeft die zelf klaargezet.
+3. Kijk of de blokken kloppen, kies bij de gestippelde blokken Klantwerk, Intern werk, Acquisitie of Pauze en klik op de grote knop "Dag opslaan".
 
 Wil de gebruiker het in de chat doen, ga dan verder met de stappen hieronder.
 

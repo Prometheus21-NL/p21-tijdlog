@@ -5,4 +5,4 @@ Lees het bestand `~/P21-tijdlog/` met de datum van vandaag (formaat `JJJJ-MM-DD.
 - van hoe laat tot hoe laat er met Claude Code is gewerkt (blokken: momenten die minder dan 15 minuten uit elkaar liggen horen bij elkaar),
 - per blok de map en de meest voorkomende soort werk,
 - het totaal aantal uren.
-Zeg ook waar het bestand staat, zodat de gebruiker het in het invulscherm kan laden: https://claude.ai/artifact/UsiVti9hAxUtu6LJK9Be4j Verander niets aan het bestand.
+Het invulscherm staat in de herinneringsmail en in de agenda-afspraak van 16:45. Verander niets aan het bestand.
