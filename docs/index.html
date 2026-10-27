@@ -125,17 +125,18 @@ input[type=file]{display:none}
 :root{--acq:#E6E6E2;--acq-ink:#3A3D45;--acq-line:#CFCFC9;--on-klant:#FFFFFF}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}}
 :root[data-theme="dark"]{--acq:#3A3D45;--acq-ink:#ECEDEF;--acq-line:#555963;--on-klant:#111216}
-.wrap{max-width:820px}
+.wrap{max-width:1120px}
 .kop-rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .kop-rechts input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:150px}
 .lijnwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}
 .lijn{display:block;grid-template-columns:none;position:relative}
-.baan{position:absolute;left:56px;right:104px;top:0;bottom:0;border-left:1px solid var(--line)}
-.agendabaan{position:absolute;right:0;width:96px;top:0;bottom:0;border-left:1px dashed var(--line)}
+.baan{position:absolute;left:56px;right:248px;top:0;bottom:0;border-left:1px solid var(--line)}
+.agendabaan{position:absolute;right:0;width:240px;top:0;bottom:0;border-left:1px dashed var(--line)}
 .agendabaan::before{content:"agenda";position:absolute;top:-16px;left:6px;font-size:10.5px;color:var(--muted);letter-spacing:.04em}
-.ag{position:absolute;border-radius:6px;padding:2px 5px;font-size:10.5px;line-height:1.2;overflow:hidden;background:var(--surface);border:1px solid var(--muted);color:var(--ink)}
+.ag{position:absolute;border-radius:6px;padding:2px 6px;font-size:12px;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:var(--surface);border:1px solid var(--muted);color:var(--ink)}
 .ag.lang{background:repeating-linear-gradient(135deg,transparent 0 5px,var(--line) 5px 7px);border-style:dashed;color:var(--muted)}
-.ag .t{display:block;font-family:var(--font-mono);font-size:10px;opacity:.8}
+.ag .t{font-family:var(--font-mono);font-size:11px;opacity:.85;margin-left:6px}
+@media (max-width:700px){.baan{right:128px}.agendabaan{width:120px}.ag{font-size:11px}.ag .t{display:block;margin-left:0}}
 .uur{left:0;width:46px;right:auto;text-align:right}
 .zij{position:relative}
 .paneel{position:absolute;left:0;right:0;top:0;background:var(--surface);border:2px solid var(--ink);border-radius:var(--r);padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
@@ -461,7 +462,7 @@ function renderAgenda(L){
     el.style.top = top + "px"; el.style.height = h + "px";
     const n = rijen[i].n; el.style.left = "calc(" + rijen[i].i + " * (100% - 4px) / " + n + " + 2px)"; el.style.width = "calc((100% - 4px) / " + n + " - 2px)";
     el.appendChild(tekst("span", a.l ? "Lang blok" : "Afspraak"));
-    if(h > 26) el.appendChild(tekst("span", fmt(a.s) + "–" + fmt(a.e), "t"));
+    el.appendChild(tekst("span", fmt(a.s) + "–" + fmt(a.e), "t"));
     el.title = (a.l ? "Lang blok in je agenda " : "Afspraak in je agenda ") + fmt(a.s) + "–" + fmt(a.e);
     kol.appendChild(el);
   });
