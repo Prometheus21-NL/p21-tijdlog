@@ -474,19 +474,10 @@ function renderAgenda(L){
     kol.appendChild(el);
   });
 }
+/* elke tab (chat) heeft een vaste kolom: dezelfde tab staat de hele dag recht onder elkaar */
 function rijenVoor(){
-  const idx = S.claude.map((b,i) => i).sort((a,b) => S.claude[a].s - S.claude[b].s);
-  const res = new Array(S.claude.length); let groep = [], groepEind = -1, baanEind = [];
-  const sluit = () => { const n = baanEind.length; groep.forEach(i => { res[i].n = n; }); groep = []; baanEind = []; };
-  idx.forEach(i => {
-    const b = S.claude[i];
-    if(b.s >= groepEind && groep.length) sluit();
-    let l = baanEind.findIndex(e => e <= b.s); if(l < 0){ l = baanEind.length; baanEind.push(0); }
-    baanEind[l] = b.e; groepEind = Math.max(groepEind, b.e);
-    res[i] = {i:l, n:1}; groep.push(i);
-  });
-  sluit();
-  return res;
+  const tabs = [...new Set(S.claude.map(b => b.tab || 0))].sort((a,b) => a - b);
+  return S.claude.map(b => ({i:tabs.indexOf(b.tab || 0), n:tabs.length}));
 }
 function renderLijn(){
   const L = $("lijn"); L.innerHTML = "";
@@ -563,6 +554,8 @@ function voegSamen(i){
 function kies(sel){ S.sel = (S.sel && S.sel.t === sel.t && S.sel.i === sel.i) ? null : sel; renderLijn(); renderPaneel(); }
 function zetSoort(sel, b, o){
   b.soort = o; S.dirty = true;
+  /* alle blokken van dezelfde tab (chat) krijgen dezelfde keuze; een uitzondering pas je daarna los aan */
+  if(sel.t === "claude" && b.tab) S.claude.forEach(x => { if(x.tab === b.tab) x.soort = o; });
     alles();
 }
 function renderPaneel(){
