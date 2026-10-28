@@ -84,7 +84,7 @@ printf '{"t":"%s","e":"%s","s":"%s"}\n' "$t" "$e" "$sid" >> "$dir/$dag.jsonl" 2>
 sync
 
 # Eerste vraag van een chat: Claude vraagt waarvoor de chat is (één keer per sessie).
-# Het antwoord wordt via soort.sh vastgelegd; alleen klant, intern of acquisitie.
+# Het antwoord wordt via soort.sh vastgelegd; alleen klant, intern, acquisitie of persoonlijk.
 if [ "$e" = vraag ] && [ -n "$sid" ] && [ ! -f "$dir/gevraagd-$sid" ]; then
   : > "$dir/gevraagd-$sid" 2>/dev/null
   skripts="$(cd "$(dirname "$0")" && pwd)"
@@ -92,7 +92,7 @@ if [ "$e" = vraag ] && [ -n "$sid" ] && [ ! -f "$dir/gevraagd-$sid" ]; then
   if [ ! -f "$dir/naam.txt" ]; then
     naamvraag=" Vraag in hetzelfde bericht ook: Wat is je voornaam? (Rinse, Joost, Pascal, Babeth, Hidde of Daan). Voer daarna uit: sh $skripts/naam.sh <voornaam>. Dat hoeft maar één keer."
   fi
-  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk of Acquisitie? Vraag niet naar namen van klanten of projecten.%s Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s/soort.sh %s klant (of intern, of acquisitie). Kiest de gebruiker niets, doe dan niets."}}' "$naamvraag" "$skripts" "$sid"
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"P21 tijdlog: dit is de eerste vraag van deze chat. Begin je antwoord met één korte vraag: Waarvoor is deze chat: Klantwerk, Intern werk, Acquisitie of Persoonlijk? Vraag niet naar namen van klanten of projecten.%s Geef daarna meteen antwoord op de vraag van de gebruiker. Zodra de gebruiker kiest, voer je uit: sh %s/soort.sh %s klant (of intern, acquisitie of persoonlijk). Kiest de gebruiker niets, doe dan niets."}}' "$naamvraag" "$skripts" "$sid"
   exit 0
 fi
 

@@ -11,7 +11,7 @@ Per moment één regel in een bestand op je eigen computer (`~/P21-tijdlog/<datu
 |---|---|
 | tijdstip (bv. 10:14) | wat je typt |
 | wat er gebeurde: sessie gestart, vraag gesteld, Claude klaar, sessie dicht | wat Claude antwoordt |
-| je antwoord op de beginvraag: klant, intern of acquisitie (alleen die drie woorden) | |
+| je antwoord op de beginvraag: klant, intern, acquisitie of persoonlijk (alleen die vier woorden) | |
 | een willekeurig sessienummer per tab (geen mapnaam, geen namen van klanten of projecten) | inhoud van bestanden, mails of documenten |
 
 De tijdlog leest nooit wat je typt. Het bestand blijft op je computer en een kopie van deze regels gaat naar de database. Wat je typt, wat Claude antwoordt en wat er in bestanden of mails staat, gaat nooit mee.
