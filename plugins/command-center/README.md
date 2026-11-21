@@ -36,6 +36,16 @@ Lezen mag zonder te vragen, schrijven vraagt elke keer om je akkoord. Zet in je
 }
 ```
 
+Die regel dekt de bord- en daily-leestools (`bekijk_*`). De leestools uit
+Charmander (`query_crm`, `get_change_overview` enzovoort) vragen nog wel om
+akkoord; voeg ze los toe als je dat wilt.
+
+## Getest en nog niet getest
+
+- `claude plugin validate` op de marketplace en de plugin: groen.
+- Nog niet in het echt: inloggen met OAuth via `/mcp` voor een server uit een
+  plugin. Doe dat één keer na de inrichting van de poort.
+
 ## In claude.ai of Claude Desktop
 
 Een Owner voegt één keer een custom connector toe met de URL
