@@ -1,0 +1,8 @@
+{
+  "name": "command-center",
+  "version": "0.1.0",
+  "description": "Het Prometheus21 Command Center in Claude: de change-borden, de delivery-borden en de daily lezen en bijwerken als jezelf, en een user story uitvoeren met /kaart.",
+  "author": {
+    "name": "Prometheus21"
+  }
+}

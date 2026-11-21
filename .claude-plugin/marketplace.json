@@ -8,6 +8,11 @@
       "name": "tijdlog",
       "source": "./plugins/tijdlog",
       "description": "Houdt bij hoe lang je met Claude Code werkt en ongeveer aan welk soort taak. Nooit wat je typt."
+    },
+    {
+      "name": "command-center",
+      "source": "./plugins/command-center",
+      "description": "Het Command Center in Claude: borden en daily lezen en bijwerken als jezelf, en een user story uitvoeren met /kaart."
     }
   ],
   "metadata": {
