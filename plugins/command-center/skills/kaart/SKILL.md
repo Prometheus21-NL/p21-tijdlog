@@ -36,9 +36,10 @@ Roep `bekijk_kaart` aan. Lees:
 
 ## 2. Wat de klant ziet (alleen Delivery)
 
-Het klantportaal toont van gewone delivery-kaarten de titel, de deadline en de kolom (dus de status). Reacties en checklists ziet de klant niet.
+Het klantportaal toont van gewone delivery-kaarten de titel, de deadline en de kolom (dus de status). Kaarten met het label `Intern` ziet de klant niet; reacties en checklists ook niet.
 
 - Elke verplaatsing van een delivery-kaart is voor de klant een statuswissel. Vraag daarom vóór elke verplaatsing akkoord.
+- Een nieuwe titel of deadline (`werk_kaart_bij`) staat ook meteen bij de klant. Vraag ook daarvoor akkoord.
 - Maak geen nieuwe delivery-kaarten zonder akkoord: die staan direct met titel bij de klant.
 - Kaarten uit het klantportaal (uploads, geheimen) wijzig of verplaats je niet. Het Command Center weigert dat ook.
 
